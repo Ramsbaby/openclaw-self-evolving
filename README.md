@@ -5,14 +5,12 @@
 [![GitHub stars](https://img.shields.io/github/stars/Ramsbaby/openclaw-self-evolving?style=flat-square)](https://github.com/Ramsbaby/openclaw-self-evolving/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 [![Platform: macOS/Linux](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux-blue?style=flat-square)](#)
-[![ClawHub](https://img.shields.io/badge/ClawHub-openclaw--self--evolving-orange?style=flat-square)](https://clawhub.com)
+[![OpenClaw Required](https://img.shields.io/badge/requires-OpenClaw-orange?style=flat-square)](https://github.com/openclaw/openclaw)
 [![No Silent Modification](https://img.shields.io/badge/policy-no%20silent%20modification-brightgreen?style=flat-square)](#)
 
-![Demo](https://raw.githubusercontent.com/Ramsbaby/openclaw-self-evolving/main/assets/demo.gif)
+> ⚠️ **OpenClaw required.** This tool analyzes OpenClaw session logs specifically (`~/.openclaw/agents/*/sessions/*.jsonl`). Other platforms are not supported yet.
 
-*Weekly log analysis → Pattern detection → AGENTS.md improvement proposals*
-
-> **Your AI agent reviews its own conversations and suggests how to improve.**
+*Your AI agent reviews its own conversation logs and proposes how to improve — every week, automatically.*
 
 > **Honest disclaimer:** This is not AGI. It's a weekly log review with pattern matching.
 > It finds things you'd find yourself — if you had time to read 500 conversation logs.
@@ -25,137 +23,176 @@
 
 AI agents make the same mistakes repeatedly.
 Nobody has time to manually review thousands of conversation logs.
-So the mistakes just keep accumulating, silently.
+The mistakes keep accumulating, silently.
 
----
-
-## ⚡ Quick Start
-
-```bash
-# One-liner install
-clawhub install openclaw-self-evolving
-
-# Then run setup and you're live:
-bash scripts/setup-wizard.sh
-# That's it — weekly cron is now scheduled.
-```
-
-<details>
-<summary>Manual install (without clawhub)</summary>
-
-```bash
-git clone https://github.com/Ramsbaby/openclaw-self-evolving.git
-cd openclaw-self-evolving
-cp config.yaml.example config.yaml
-# Edit config.yaml to set your paths
-bash scripts/setup-wizard.sh
-```
-</details>
+Self-Evolving automates the review — and brings you a short list of what to fix.
 
 ---
 
 ## How It Works
 
 ```
-Session Logs → [Analyzer] → Patterns → [Generator] → Proposals → [Human] → AGENTS.md
-                                                          ↑
-                                             Rejected reasons fed back
+Session Logs (7 days)
+    → Analyzer (bash + Python, no API calls)
+    → Detected Patterns (JSON)
+    → Proposal Generator (template-based, 6 pattern types)
+    → Discord / Telegram Report
+    → You approve or reject (emoji reactions)
+    → Approved: auto-apply to AGENTS.md + git commit
+    → Rejected: reason stored → fed into next week's analysis
 ```
 
-```
-1. Collect  → Scans last 7 days of conversation session logs
-2. Analyze  → Detects recurring patterns, complaints, and failures
-3. Propose  → Generates AGENTS.md improvement candidates
-4. Review   → You approve or reject (emoji reactions supported)
-5. Learn    → Rejection reasons feed into the next analysis cycle
-```
-
-No model calls. No API fees. Pure log analysis with shell + Python.
+**No LLM calls during analysis. No API fees. Pure local log processing.**
 
 ---
 
-## 👀 Before / After — What It Actually Does
+## ⚡ Quick Start
 
-**Before self-evolving** (raw pattern found in logs):
+```bash
+# Install via ClawHub
+clawhub install openclaw-self-evolving
+
+# Run setup wizard (registers weekly cron)
+bash scripts/setup-wizard.sh
+```
+
+<details>
+<summary>Manual install</summary>
+
+```bash
+git clone https://github.com/Ramsbaby/openclaw-self-evolving.git
+cd openclaw-self-evolving
+cp config.yaml.example config.yaml
+# Edit config.yaml: set agents_dir, logs_dir, agents_md
+bash scripts/setup-wizard.sh
+```
+</details>
+
+---
+
+## What It Detects (6 Pattern Types)
+
+**1. Tool retry loops** — Same tool called 5+ times consecutively. Agent confusion signal.
+
+**2. Repeating errors** — Same error 5+ times across sessions. Unfixed bug, not a fluke.
+
+**3. User frustration** — Keywords like "you said this already", "why again", "다시", "또" — with context filtering to reduce false positives.
+
+**4. AGENTS.md violations** — Rules broken in actual `exec` tool calls (not conversation text). Cross-referenced against your current AGENTS.md.
+
+**5. Heavy sessions** — Sessions hitting >85% context window. Tasks that should be sub-agents.
+
+**6. Unresolved learnings** — High-priority items in `.learnings/` not yet promoted to AGENTS.md.
+
+Full details: [docs/DETECTION-PATTERNS.md](docs/DETECTION-PATTERNS.md)
+
+---
+
+## Proposal Generation
+
+Proposals are **template-based**, not LLM-generated. Each detected pattern maps to a structured template with:
+
+- **Evidence** — exact log excerpts, occurrence counts, affected sessions
+- **Before** — current state in AGENTS.md (or "no rule exists")
+- **After** — concrete diff: what to add or change
+- **Section** — which AGENTS.md section to update
+
+Example output for a detected violation:
+
+```
+[PROPOSAL #1 — HIGH] git 직접 명령 4회 위반 감지
+
+Evidence:
+  - Session #325: exec "git commit -m 'fix'" ← violates AGENTS.md rule
+  - Session #331: exec "git add -A && git commit"
+  - Total: 4 violations in 3 weeks
+
+Before:
+  직접 git 명령 금지.
+
+After (diff):
++ ⚠️ CRITICAL — NEVER run git directly. Violated 4× in 3 weeks.
+  직접 git 명령 금지. (git add / git commit / git push 전부 포함)
+  충돌 시 정우님께 보고.
+
+React ✅ to apply | ❌ to reject (add reason)
+```
+
+---
+
+## Real Results (single-user production, macOS/OpenClaw)
+
+After 4 weeks running on a real OpenClaw setup:
+
+- 85 frustration patterns detected across 30 sessions
+- 4 proposals generated per week on average
+- 13 AGENTS.md violations caught and corrected
+- False positive rate: ~8% (v5.0, down from 15% in v4)
+
+*Your mileage will vary. These numbers are from one production instance.*
+
+---
+
+## Before / After Example
+
+**Raw pattern found in logs:**
 
 ```
 [Session #312] User: "why are you calling git directly again?? I told you to use git-sync.sh"
 [Session #318] User: "you did it again, direct git command"
-[Session #325] exec: git commit -m "fix" ← AGENTS.md violation detected
+[Session #325] exec: git commit -m "fix"   ← AGENTS.md violation flagged
 [Session #331] User: "stop using git directly!!!"
 ```
 
-**After proposal approved** (AGENTS.md diff):
+**After proposal approved:**
 
 ```diff
 ## 🔄 Git Sync
 
-+ ⚠️  CRITICAL — NEVER run git directly. This has been violated 4× in 3 weeks.
++ ⚠️  CRITICAL — NEVER run git directly. Violated 4× in 3 weeks.
   파일 수정 전 반드시: `bash ~/openclaw/scripts/git-sync.sh`
 - 직접 git 명령 금지.
 + 직접 git 명령 금지. (git add / git commit / git push 전부 포함)
   충돌 시 정우님께 보고.
 ```
 
-The agent found the pattern, wrote the proposal, and after your approval — the rule is now harder to miss.
-
----
-
-## 📊 Real Results (from actual production use)
-
-After 4 weeks of running:
-
-- **85 frustration patterns** detected across 30 sessions
-- **4 proposals** generated per week on average
-- **13 AGENTS.md violations** caught and corrected
-- **False positive rate**: ~8% (down from 15% in v4)
-
-Numbers from a single-user production setup on macOS/OpenClaw. Your mileage will vary.
-
----
-
-## What It Detects
-
-- **Tool retry loops** — Same tool called 5+ times in a row (agent confusion signal)
-- **Repeating errors** — Same error appearing 5+ times = unfixed bug, not a fluke
-- **User frustration** — Expressions like "you said this already", "why again" (context-filtered)
-- **AGENTS.md violations** — Rules broken in actual exec commands (not false positives from conversation text)
-- **Heavy sessions** — Compaction-heavy sessions = tasks that should be sub-agents
-- **Unresolved learnings** — High-priority items in `.learnings/` not yet promoted to `AGENTS.md`
-
----
-
-## Coming from Capability Evolver?
-
-Capability Evolver was recently suspended from ClawHub. If you're looking for an alternative — this is the honest one.
-
-> **Why switch?** Silent modification is a liability. One bad auto-edit to AGENTS.md can break your entire agent workflow. Self-Evolving never touches a file without your explicit sign-off.
-
-| Feature | Capability Evolver | Self-Evolving |
-|---------|-------------------|---------------|
-| Silent modification | ⚠️ Yes (on by default) | ❌ Never |
-| Human approval | Optional (off by default) | **Required. Always.** |
-| API calls per run | Multiple LLM calls ($$$) | Zero (pure log analysis) |
-| Transparency | Closed analysis | Full audit log |
-| Rejection memory | ❌ None | ✅ Stored + fed back |
-| False positive rate | ~22% (self-reported) | ~8% (v5, measured) |
-
-Migration: just install and run. No data migration needed — we scan raw session logs directly.
-
 ---
 
 ## Approval Workflow
 
-After analysis, a report is posted to your configured channel:
+After analysis, a report is posted to your configured channel. React to approve or reject:
 
-| Reaction | Meaning |
-|----------|---------|
-| ✅ | Approve all → auto-apply to AGENTS.md + git commit |
-| 1️⃣–5️⃣ | Approve only that numbered proposal |
-| ❌ | Reject all (add a comment with your reason — it feeds back in) |
-| 🔄 | Request revision (describe what you want changed) |
+- ✅ Approve all → auto-apply to AGENTS.md + git commit
+- 1️⃣–5️⃣ Approve only that numbered proposal
+- ❌ Reject all (add a comment with reason — it feeds back into next analysis)
+- 🔄 Request revision (describe what you want changed)
 
 Rejected proposal IDs are stored in `data/rejected-proposals.json` and excluded from future analyses.
+
+---
+
+## Pairs Well With
+
+**[openclaw-self-healing](https://github.com/Ramsbaby/openclaw-self-healing)** — Crash recovery + auto-repair.
+
+Self-healing fires on crash. Self-evolving runs weekly to fix what *causes* the crashes — including promoting self-healing error patterns directly into AGENTS.md rules.
+
+Integration: set `SEA_LEARNINGS_PATHS` to include your self-healing `.learnings/` directory. Detected errors automatically surface as self-evolving proposals.
+
+---
+
+## vs. Capability Evolver
+
+Capability Evolver was recently suspended from ClawHub. If you're looking for an alternative:
+
+| Feature | Capability Evolver | Self-Evolving |
+|---|---|---|
+| Silent modification | ⚠️ Yes (on by default) | ❌ Never |
+| Human approval | Optional (off by default) | Required. Always. |
+| API calls per run | Multiple LLM calls | Zero |
+| Transparency | Closed analysis | Full audit log |
+| Rejection memory | None | Stored + fed back |
+| False positive rate | ~22% (self-reported) | ~8% (v5, measured) |
 
 ---
 
@@ -163,31 +200,43 @@ Rejected proposal IDs are stored in `data/rejected-proposals.json` and excluded 
 
 ```yaml
 # config.yaml
-analysis_days: 7          # How many days of logs to scan
+analysis_days: 7          # Days of logs to scan
 max_sessions: 50          # Max session files to analyze
-verbose: true             # Show analysis progress
+verbose: true
 
-# Paths (auto-detected if using standard openclaw layout)
+# Paths (auto-detected for standard OpenClaw layout)
 agents_dir: ~/.openclaw/agents
 logs_dir: ~/.openclaw/logs
 agents_md: ~/openclaw/AGENTS.md
+
+# Notifications
+notify:
+  discord_channel: ""     # Discord channel ID
+  telegram_chat_id: ""    # Optional
+
+# Detection thresholds
+thresholds:
+  tool_retry: 5           # Consecutive calls to flag
+  error_repeat: 5         # Error occurrences to flag
+  heavy_session: 85       # Context % threshold
 ```
 
-**Cron (weekly, Sunday 09:00):** `bash scripts/setup-wizard.sh` — or add manually:
-```
-0 9 * * 0 bash ~/projects/openclaw-self-evolving/scripts/generate-proposal.sh
-```
-
-**Notification channels:** set `notify.discord_channel` or `notify.telegram_chat_id` in `config.yaml`.
+**Weekly cron (Sunday 22:00):** `bash scripts/setup-wizard.sh` sets this up automatically.
 
 ---
 
-## Pairs Well With
+## Options & Flags
 
-→ **[openclaw-self-healing](https://github.com/Ramsbaby/openclaw-self-healing)** — Crash recovery + auto-repair.
+```bash
+# Run analysis without modifying anything
+bash scripts/generate-proposal.sh --dry-run
 
-Self-evolving makes your agent **smarter**. Self-healing keeps it **alive**.
-Self-healing fires on crash; self-evolving runs weekly to fix what *causes* the crashes.
+# Scan more history
+ANALYSIS_DAYS=14 bash scripts/generate-proposal.sh
+
+# Reset rejection history
+rm data/rejected-proposals.json
+```
 
 ---
 
@@ -195,27 +244,33 @@ Self-healing fires on crash; self-evolving runs weekly to fix what *causes* the 
 
 ```
 openclaw-self-evolving/
-├── assets/
-│   └── demo.gif                 # Demo animation (header)
 ├── scripts/
-│   ├── analyze-behavior.sh      # Core log analysis engine (v5.0)
-│   ├── generate-proposal.sh     # Proposal generator + report builder
-│   └── setup-wizard.sh          # Interactive setup
-├── config.yaml.example
+│   ├── analyze-behavior.sh      # Log analysis engine (v3.0, 647 lines)
+│   ├── generate-proposal.sh     # Pipeline orchestrator + proposal builder (705 lines)
+│   ├── setup-wizard.sh          # Interactive setup + cron registration
+│   └── lib/config-loader.sh     # Config loader (sourced by scripts)
+├── docs/
+│   ├── ARCHITECTURE.md
+│   ├── DETECTION-PATTERNS.md
+│   └── QUICKSTART.md
+├── test/
+│   └── fixtures/                # Sample session JSONL for testing / contributing
 ├── data/
 │   ├── proposals/               # Saved proposal JSON files
 │   └── rejected-proposals.json  # Rejection history
-└── README.md
+└── config.yaml.example
 ```
 
 ---
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). PRs welcome — especially for:
-- New detection patterns
-- Support for other AI platforms (currently optimized for OpenClaw)
+See [CONTRIBUTING.md](CONTRIBUTING.md). PRs welcome — especially:
+
+- New detection patterns for `analyze-behavior.sh`
 - Better false-positive filtering
+- Support for other platforms (currently OpenClaw-specific — log format abstraction layer planned)
+- Test fixtures in `test/fixtures/` (sample `.jsonl` files to enable contributor testing without real logs)
 
 ---
 

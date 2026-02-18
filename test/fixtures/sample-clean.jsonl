@@ -1,0 +1,6 @@
+{"role":"user","content":"오늘 날씨 어때?","timestamp":"2026-02-10T09:00:00Z"}
+{"role":"assistant","content":"확인하겠습니다.","timestamp":"2026-02-10T09:00:01Z"}
+{"role":"tool_use","name":"web_fetch","input":{"url":"https://wttr.in/Seoul?format=3"},"timestamp":"2026-02-10T09:00:02Z"}
+{"role":"tool_result","content":"Seoul: ⛅ +3°C","timestamp":"2026-02-10T09:00:03Z"}
+{"role":"assistant","content":"서울 현재 3°C, 흐림입니다.","timestamp":"2026-02-10T09:00:04Z"}
+{"role":"user","content":"고마워","timestamp":"2026-02-10T09:00:10Z"}

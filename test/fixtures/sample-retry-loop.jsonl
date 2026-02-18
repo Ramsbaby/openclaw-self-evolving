@@ -1,0 +1,15 @@
+{"role":"user","content":"서버 상태 확인해줘","timestamp":"2026-02-10T11:00:00Z"}
+{"role":"assistant","content":"확인하겠습니다.","timestamp":"2026-02-10T11:00:01Z"}
+{"role":"tool_use","name":"exec","input":{"command":"curl -sf http://localhost:3000/health"},"timestamp":"2026-02-10T11:00:02Z"}
+{"role":"tool_result","content":"curl: (7) Failed to connect","timestamp":"2026-02-10T11:00:03Z"}
+{"role":"tool_use","name":"exec","input":{"command":"curl -sf http://localhost:3000/health"},"timestamp":"2026-02-10T11:00:04Z"}
+{"role":"tool_result","content":"curl: (7) Failed to connect","timestamp":"2026-02-10T11:00:05Z"}
+{"role":"tool_use","name":"exec","input":{"command":"curl -sf http://localhost:3000/health"},"timestamp":"2026-02-10T11:00:06Z"}
+{"role":"tool_result","content":"curl: (7) Failed to connect","timestamp":"2026-02-10T11:00:07Z"}
+{"role":"tool_use","name":"exec","input":{"command":"curl -sf http://localhost:3000/health"},"timestamp":"2026-02-10T11:00:08Z"}
+{"role":"tool_result","content":"curl: (7) Failed to connect","timestamp":"2026-02-10T11:00:09Z"}
+{"role":"tool_use","name":"exec","input":{"command":"curl -sf http://localhost:3000/health"},"timestamp":"2026-02-10T11:00:10Z"}
+{"role":"tool_result","content":"curl: (7) Failed to connect","timestamp":"2026-02-10T11:00:11Z"}
+{"role":"tool_use","name":"exec","input":{"command":"curl -sf http://localhost:3000/health"},"timestamp":"2026-02-10T11:00:12Z"}
+{"role":"tool_result","content":"curl: (7) Failed to connect","timestamp":"2026-02-10T11:00:13Z"}
+{"role":"assistant","content":"서버가 응답하지 않습니다.","timestamp":"2026-02-10T11:00:14Z"}

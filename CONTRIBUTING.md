@@ -1,38 +1,59 @@
 # Contributing to openclaw-self-evolving
 
-Thanks for your interest. This project does one thing: analyze AI agent logs and propose `AGENTS.md` improvements.
+This project does one thing: analyze AI agent logs and propose `AGENTS.md` improvements.
 
 ## Ground Rules
 
 1. **No silent modification** — any change to `AGENTS.md` must go through human approval. Don't add code that bypasses this.
-2. **No API calls** — analysis stays local. No sending logs to external services.
-3. **False positive > missed signal** — it's better to detect nothing than to flood the user with noise. Filter aggressively.
+2. **No external API calls** — analysis stays local. No sending logs to external services.
+3. **False positive > missed signal** — better to detect nothing than flood the user with noise. Filter aggressively.
 
 ## What's Welcome
 
 - New detection patterns for `analyze-behavior.sh`
 - Better false-positive filtering for complaint/violation detection
-- Support for other AI platforms (currently OpenClaw-specific paths)
+- Support for other AI platforms (currently OpenClaw-specific — log format abstraction layer planned)
+- Test fixtures in `test/fixtures/` (sample `.jsonl` session files)
 - Performance improvements for large log volumes
 
 ## How to Contribute
 
-1. Fork the repo
-2. Create a branch: `git checkout -b feature/your-feature-name`
-3. Test with your own logs: `bash scripts/generate-proposal.sh`
-4. Open a PR with a short description of what you detected and why it's useful
-
-## Testing
-
 ```bash
-# Run analysis against your own logs
-bash scripts/analyze-behavior.sh /tmp/test-analysis.json
+# Fork the repo
+git checkout -b feature/your-feature-name
 
-# Generate proposal report
+# Test with fixture files (no real logs needed)
+AGENTS_DIR=test/fixtures bash scripts/analyze-behavior.sh /tmp/test-output.json
+
+# Or dry-run the full pipeline
+bash scripts/generate-proposal.sh --dry-run
+
+# Run against your own real logs
 bash scripts/generate-proposal.sh
 ```
 
-No test suite yet. PRs that add tests are especially welcome.
+Open a PR with a short description of what you detected and why it matters.
+
+## Adding Detection Patterns
+
+Edit `analyze-behavior.sh` and add a detection function:
+
+```bash
+detect_my_pattern() {
+    local session_file="$1"
+    local count=0
+    # Your detection logic
+    echo "$count"
+}
+```
+
+Register it in the `PATTERNS` array at the top of the file.
+
+Document it in `docs/DETECTION-PATTERNS.md` with: what it detects, why it matters, detection method, false positive prevention.
+
+## Adding Test Fixtures
+
+Add anonymized session `.jsonl` files to `test/fixtures/`. See `test/fixtures/README.md` for format and anonymization guidelines.
 
 ## Questions
 

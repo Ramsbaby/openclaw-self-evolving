@@ -52,6 +52,15 @@ EXPIRE_DAYS="${SEA_EXPIRE_DAYS:-30}"
 VERBOSE="${SEA_VERBOSE:-true}"
 AGENTS_MD="${AGENTS_MD:-$HOME/openclaw/AGENTS.md}"
 
+# --dry-run flag: analyze and print proposals, but do not save files or send notifications
+DRY_RUN=false
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run|-n) DRY_RUN=true ;;
+  esac
+done
+[ "$DRY_RUN" = "true" ] && log "🔍 DRY RUN mode — no files will be modified, no notifications sent"
+
 mkdir -p "$PROPOSAL_DIR"
 mkdir -p "$SKILL_DIR/data"
 
@@ -689,6 +698,20 @@ main() {
 
   if [ -z "$proposals_json" ] || [ "$proposals_json" = "[]" ] || [ "$proposals_json" = "null" ]; then
     proposals_json='[{"id":"no-issues-found","source":"system","title":"이번 주 발견된 개선 필요 사항 없음","severity":"info","evidence":"분석 결과 주요 패턴 없음","before":"N/A","after":"N/A","section":"N/A","diff_type":"none"}]'
+  fi
+
+  if [ "$DRY_RUN" = "true" ]; then
+    log "🔍 [DRY RUN] Proposals (not saved, not sent):"
+    echo "$proposals_json" | python3 -c "
+import sys, json
+proposals = json.load(sys.stdin)
+for i, p in enumerate(proposals, 1):
+    print(f'  [{i}] [{p.get(\"severity\",\"?\").upper()}] {p.get(\"title\",\"\")}')
+    print(f'       Evidence: {p.get(\"evidence\",\"\")[:120]}')
+    print()
+" 2>/dev/null || echo "$proposals_json"
+    log "=== generate-proposal.sh v3.0 완료 (dry run) ==="
+    return 0
   fi
 
   local saved_file
