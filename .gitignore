@@ -1,0 +1,31 @@
+# Analysis output (may contain sensitive log excerpts)
+/tmp/self-evolving-*.json
+
+# Data files — keep proposals/, ignore archives and large logs
+data/proposals/archive/
+data/*.log
+
+# Config with personal paths/tokens
+config.yaml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node (if any tooling added later)
+node_modules/

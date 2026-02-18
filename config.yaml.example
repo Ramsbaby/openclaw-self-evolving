@@ -1,0 +1,31 @@
+# openclaw-self-evolving config
+# Copy to config.yaml and edit paths
+
+# Analysis settings
+analysis_days: 7          # Days of logs to scan (default: 7)
+max_sessions: 50          # Max session files per analysis
+verbose: true             # Show progress during analysis
+
+# Paths (auto-detected for standard openclaw layout)
+# agents_dir: ~/.openclaw/agents
+# logs_dir: ~/.openclaw/logs
+# agents_md: ~/openclaw/AGENTS.md
+# memory_md: ~/openclaw/MEMORY.md
+
+# Detection thresholds
+repeat_min: 3             # Minimum occurrences to flag as "repeated request"
+expire_days: 30           # Days before old proposals are archived
+
+# Notification (optional)
+# notify:
+#   discord_channel: "YOUR_CHANNEL_ID"
+#   # telegram_chat_id: ""
+
+# Complaint patterns to detect (Korean defaults)
+# complaint_patterns:
+#   - "말했잖아"
+#   - "했잖아"
+#   - "이미 말했"
+#   - "왜 또"
+#   - "몇 번"
+#   - "기억 못"
