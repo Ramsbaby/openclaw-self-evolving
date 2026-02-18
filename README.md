@@ -103,6 +103,21 @@ notify:
 
 ---
 
+## Coming from Capability Evolver?
+
+Capability Evolver was recently suspended from ClawHub. If you're looking for an alternative:
+
+| Feature | Capability Evolver | Self-Evolving |
+|---------|-------------------|---------------|
+| Silent modification | ⚠️ Yes | ❌ Never |
+| Human approval | Optional | **Required** |
+| API calls | Multiple LLM calls | Zero (pure log analysis) |
+| Transparency | Closed analysis | Full logging |
+
+Migration: just install and run. No data migration needed — we scan raw session logs directly.
+
+---
+
 ## Pairs Well With
 
 → **[openclaw-self-healing](https://github.com/Ramsbaby/openclaw-self-healing)** — Crash recovery + auto-repair.
