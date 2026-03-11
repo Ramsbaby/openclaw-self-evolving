@@ -181,6 +181,33 @@ Integration: set `SEA_LEARNINGS_PATHS` to include your self-healing `.learnings/
 
 ---
 
+## Structured Event Logging (session-logger.sh)
+
+`session-logger.sh` is a companion script that standardizes session events into JSONL format, enabling precise analysis beyond raw log parsing.
+
+**Usage (source as library):**
+```bash
+source scripts/session-logger.sh
+log_session_start "$SESSION_ID" "$MODEL" "$TASK"
+log_session_end "$SESSION_ID" "$EXIT_CODE" "$DURATION" "$TOKENS_IN" "$TOKENS_OUT"
+log_error "$SESSION_ID" "TypeError" "Cannot read property" true
+log_recovery "$SESSION_ID" "crash_loop" "tmux_ai" true
+```
+
+**Usage (standalone CLI):**
+```bash
+session-logger.sh log session_start '{"session_id":"abc","model":"claude-opus-4-5"}'
+```
+
+Each line written to `~/.openclaw/logs/sessions.jsonl`:
+```json
+{"ts":"2026-03-11T08:00:00Z","event":"session_start","data":{"session_id":"abc","model":"claude-opus-4-5","task":"standup"}}
+```
+
+`analyze-behavior.sh` v3.1 automatically reads `sessions.jsonl` if present and adds structured metrics (`jsonl_summary`) to its JSON output — top tools by call volume, recent errors with full metadata.
+
+---
+
 ## vs. Capability Evolver
 
 Capability Evolver was recently suspended from ClawHub. If you're looking for an alternative:
@@ -245,7 +272,8 @@ rm data/rejected-proposals.json
 ```
 openclaw-self-evolving/
 ├── scripts/
-│   ├── analyze-behavior.sh      # Log analysis engine (v3.0, 647 lines)
+│   ├── analyze-behavior.sh      # Log analysis engine (v3.1) — JSONL-aware
+│   ├── session-logger.sh        # Structured JSONL event logger (dual-mode: library + CLI)
 │   ├── generate-proposal.sh     # Pipeline orchestrator + proposal builder (705 lines)
 │   ├── setup-wizard.sh          # Interactive setup + cron registration
 │   └── lib/config-loader.sh     # Config loader (sourced by scripts)
