@@ -12,6 +12,10 @@
 #   ANALYSIS_DAYS=14 bash analyze-behavior.sh
 #
 # 변경 이력:
+#   v3.1 (2026-03-11) — JSONL 구조화 분석 추가
+#     - sessions.jsonl 존재 시 이벤트 집계 (sessions/errors/recoveries)
+#     - jsonl_summary 키를 최종 JSON 출력에 병합
+#     - session-logger.sh 컴패니언 스크립트 연동
 #   v3.0 (2026-02-17) — 품질 비평 기반 전면 개선
 #     - 버그 수정: tool_use → toolCall (실제 필드명)
 #     - 연속 도구 재시도 분석 추가 (exec 5210회 패턴 감지)
@@ -626,12 +630,136 @@ ANALYSIS_PY_EOF
     2>/dev/null || echo "분석 실행 실패" >&2
 }
 
+# ── JSONL 구조화 분석 (sessions.jsonl 연동) ─────────────────────────────────
+# Reads $OPENCLAW_LOGS_DIR/sessions.jsonl (written by session-logger.sh) and
+# injects a "jsonl_summary" key into OUTPUT_JSON with aggregated metrics.
+# Safe no-op when the file does not yet exist.
+analyze_jsonl_sessions() {
+  local sessions_jsonl="${OPENCLAW_LOGS_DIR:-$LOGS_DIR}/sessions.jsonl"
+
+  if [[ ! -f "$sessions_jsonl" ]]; then
+    log "sessions.jsonl 없음 — JSONL 분석 건너뜀 (session-logger.sh 로그 시작 후 활성화)"
+    return 0
+  fi
+
+  log "=== JSONL Structured Analysis ===" >&2
+  log "sessions.jsonl: $sessions_jsonl"
+
+  # Aggregate event counts using grep (safe: no shell expansion in pattern)
+  local total_sessions total_errors recovery_attempts tool_calls
+  total_sessions=$(grep -c '"event":"session_start"'  "$sessions_jsonl" 2>/dev/null || true)
+  total_errors=$(grep -c '"event":"error"'             "$sessions_jsonl" 2>/dev/null || true)
+  recovery_attempts=$(grep -c '"event":"recovery"'     "$sessions_jsonl" 2>/dev/null || true)
+  tool_calls=$(grep -c '"event":"tool_call"'           "$sessions_jsonl" 2>/dev/null || true)
+
+  # Default to 0 when grep returns empty (no matches)
+  total_sessions=${total_sessions:-0}
+  total_errors=${total_errors:-0}
+  recovery_attempts=${recovery_attempts:-0}
+  tool_calls=${tool_calls:-0}
+
+  # Compute success rate: sessions that ended with exit_code:0
+  local successful_sessions
+  successful_sessions=$(grep '"event":"session_end"' "$sessions_jsonl" 2>/dev/null \
+    | grep -c '"exit_code":0' 2>/dev/null || true)
+  successful_sessions=${successful_sessions:-0}
+
+  # Top tool names by frequency (requires python3 for proper JSONL parsing)
+  local top_tools="[]"
+  top_tools=$(python3 - "$sessions_jsonl" << 'PYEOF' 2>/dev/null
+import sys, json
+from collections import Counter
+path = sys.argv[1]
+counts = Counter()
+try:
+    with open(path, encoding='utf-8', errors='ignore') as f:
+        for line in f:
+            try:
+                obj = json.loads(line)
+                if obj.get('event') == 'tool_call':
+                    name = obj.get('data', {}).get('tool_name', '')
+                    cnt  = obj.get('data', {}).get('count', 1)
+                    if name:
+                        counts[name] += int(cnt)
+            except (json.JSONDecodeError, ValueError, TypeError):
+                pass
+    result = [{"tool": t, "total_calls": c} for t, c in counts.most_common(5)]
+    print(json.dumps(result))
+except Exception:
+    print('[]')
+PYEOF
+) || top_tools="[]"
+
+  # Most recent error messages (last 3)
+  local recent_errors="[]"
+  recent_errors=$(python3 - "$sessions_jsonl" << 'PYEOF' 2>/dev/null
+import sys, json
+path = sys.argv[1]
+errors = []
+try:
+    with open(path, encoding='utf-8', errors='ignore') as f:
+        for line in f:
+            try:
+                obj = json.loads(line)
+                if obj.get('event') == 'error':
+                    d = obj.get('data', {})
+                    errors.append({
+                        'ts': obj.get('ts', ''),
+                        'type': d.get('type', ''),
+                        'message': d.get('message', '')[:120],
+                        'recoverable': d.get('recoverable', False)
+                    })
+            except (json.JSONDecodeError, ValueError, TypeError):
+                pass
+    print(json.dumps(errors[-3:]))
+except Exception:
+    print('[]')
+PYEOF
+) || recent_errors="[]"
+
+  log "JSONL 집계: 세션 ${total_sessions}개, 오류 ${total_errors}건, 복구 ${recovery_attempts}건"
+
+  # Build summary JSON string
+  local jsonl_summary
+  jsonl_summary=$(python3 -c "
+import json
+summary = {
+    'total_sessions': $total_sessions,
+    'successful_sessions': $successful_sessions,
+    'total_errors': $total_errors,
+    'recovery_attempts': $recovery_attempts,
+    'tool_call_entries': $tool_calls,
+    'top_tools': $top_tools,
+    'recent_errors': $recent_errors,
+    'source_file': '$(basename "$sessions_jsonl")'
+}
+print(json.dumps(summary, ensure_ascii=False))
+" 2>/dev/null) || jsonl_summary='{"total_sessions":0,"total_errors":0,"recovery_attempts":0}'
+
+  # Merge jsonl_summary into OUTPUT_JSON
+  python3 - "$OUTPUT_JSON" "$jsonl_summary" << 'PYEOF' 2>/dev/null
+import sys, json
+output_path = sys.argv[1]
+summary_str = sys.argv[2]
+try:
+    with open(output_path, encoding='utf-8') as f:
+        data = json.load(f)
+    data['jsonl_summary'] = json.loads(summary_str)
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+except Exception as e:
+    print(f'jsonl_summary 병합 실패: {e}', file=sys.stderr)
+PYEOF
+}
+
 main() {
-  log "=== Self-Evolving Agent 행동 분석 v3.0 ==="
+  log "=== Self-Evolving Agent 행동 분석 v3.1 ==="
   log "분석 기간: 최근 ${ANALYSIS_DAYS}일 / 최대 ${MAX_SESSIONS}개 세션"
   log "에이전트 디렉토리: $AGENTS_DIR"
 
   run_analysis
+
+  analyze_jsonl_sessions
 
   log "분석 완료 → $OUTPUT_JSON"
 
