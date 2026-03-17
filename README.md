@@ -110,7 +110,7 @@ Evidence:
 Before:
   직접 git 명령 금지.
 
-After (diff):
+After (diff)
 + ⚠️ CRITICAL — NEVER run git directly. Violated 4× in 3 weeks.
   직접 git 명령 금지. (git add / git commit / git push 전부 포함)
   충돌 시 정우님께 보고.
@@ -288,6 +288,19 @@ openclaw-self-evolving/
 │   └── rejected-proposals.json  # Rejection history
 └── config.yaml.example
 ```
+
+---
+
+## 🌐 OpenClaw Ecosystem
+
+| Project | Role |
+|---------|------|
+| **[openclaw-self-evolving](https://github.com/Ramsbaby/openclaw-self-evolving)** ← you are here | Weekly log review → propose AGENTS.md improvements |
+| **[openclaw-self-healing](https://github.com/Ramsbaby/openclaw-self-healing)** | 4-tier autonomous crash recovery — gateway back in ~30s |
+| **[openclaw-memorybox](https://github.com/Ramsbaby/openclaw-memorybox)** | Zero-dep memory hygiene CLI — prevents bloat crashes |
+| **[claude-discord-bridge](https://github.com/Ramsbaby/claude-discord-bridge)** | Full AI company-in-a-box — where all OpenClaw tools run in production |
+
+All MIT licensed, all battle-tested on the same 24/7 production instance.
 
 ---
 
