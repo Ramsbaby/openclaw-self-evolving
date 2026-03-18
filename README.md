@@ -7,8 +7,7 @@
 [![Platform: macOS/Linux](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux-blue?style=flat-square)](#)
 [![OpenClaw Required](https://img.shields.io/badge/requires-OpenClaw-orange?style=flat-square)](https://github.com/openclaw/openclaw)
 [![No Silent Modification](https://img.shields.io/badge/policy-no%20silent%20modification-brightgreen?style=flat-square)](#)
-
-> ⚠️ **OpenClaw required.** This tool analyzes OpenClaw session logs specifically (`~/.openclaw/agents/*/sessions/*.jsonl`). Other platforms are not supported yet.
+[![False Positive Rate](https://img.shields.io/badge/false_positive_rate-8%25-brightgreen)](README.md)
 
 *Your AI agent reviews its own conversation logs and proposes how to improve — every week, automatically.*
 
@@ -45,6 +44,8 @@ Session Logs (7 days)
 **No LLM calls during analysis. No API fees. Pure local log processing.**
 
 ---
+
+> ⚠️ **OpenClaw required.** This tool analyzes OpenClaw session logs specifically (`~/.openclaw/agents/*/sessions/*.jsonl`). Other platforms are not supported yet.
 
 ## ⚡ Quick Start
 
@@ -318,3 +319,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). PRs welcome — especially:
 ## License
 
 [MIT](LICENSE) — do whatever you want, just don't remove the "human approval required" part. That part matters.
+
