@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🧠 OpenClaw Self-Evolving Agent
+# \ud83e\udde0 OpenClaw Self-Evolving Agent
 
 [![GitHub stars](https://img.shields.io/github/stars/Ramsbaby/openclaw-self-evolving?style=flat-square)](https://github.com/Ramsbaby/openclaw-self-evolving/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -9,10 +9,10 @@
 [![No Silent Modification](https://img.shields.io/badge/policy-no%20silent%20modification-brightgreen?style=flat-square)](#)
 [![False Positive Rate](https://img.shields.io/badge/false_positive_rate-8%25-brightgreen)](README.md)
 
-*Your AI agent reviews its own conversation logs and proposes how to improve — every week, automatically.*
+*Your AI agent reviews its own conversation logs and proposes how to improve \u2014 every week, automatically.*
 
 > **Honest disclaimer:** This is not AGI. It's a weekly log review with pattern matching.
-> It finds things you'd find yourself — if you had time to read 500 conversation logs.
+> It finds things you'd find yourself \u2014 if you had time to read 500 conversation logs.
 
 </div>
 
@@ -24,7 +24,7 @@ AI agents make the same mistakes repeatedly.
 Nobody has time to manually review thousands of conversation logs.
 The mistakes keep accumulating, silently.
 
-Self-Evolving automates the review — and brings you a short list of what to fix.
+Self-Evolving automates the review \u2014 and brings you a short list of what to fix.
 
 ---
 
@@ -32,22 +32,23 @@ Self-Evolving automates the review — and brings you a short list of what to fi
 
 ```
 Session Logs (7 days)
-    → Analyzer (bash + Python, no API calls)
-    → Detected Patterns (JSON)
-    → Proposal Generator (template-based, 6 pattern types)
-    → Discord / Telegram Report
-    → You approve or reject (emoji reactions)
-    → Approved: auto-apply to AGENTS.md + git commit
-    → Rejected: reason stored → fed into next week's analysis
+    \u2192 Analyzer (bash + Python, no API calls)
+    \u2192 Detected Patterns (JSON)
+    \u2192 Proposal Generator (template-based, 6 pattern types)
+    \u2192 Discord / Telegram Report
+    \u2192 GitHub Issue (optional, --create-issue flag)   \u2190 NEW in v3.1
+    \u2192 You approve or reject (emoji reactions)
+    \u2192 Approved: auto-apply to AGENTS.md + git commit
+    \u2192 Rejected: reason stored \u2192 fed into next week's analysis
 ```
 
 **No LLM calls during analysis. No API fees. Pure local log processing.**
 
 ---
 
-> ⚠️ **OpenClaw required.** This tool analyzes OpenClaw session logs specifically (`~/.openclaw/agents/*/sessions/*.jsonl`). Other platforms are not supported yet.
+> \u26a0\ufe0f **OpenClaw required.** This tool analyzes OpenClaw session logs specifically (`~/.openclaw/agents/*/sessions/*.jsonl`). Other platforms are not supported yet.
 
-## ⚡ Quick Start
+## \u26a1 Quick Start
 
 ```bash
 # Install via ClawHub
@@ -73,17 +74,17 @@ bash scripts/setup-wizard.sh
 
 ## What It Detects (6 Pattern Types)
 
-**1. Tool retry loops** — Same tool called 5+ times consecutively. Agent confusion signal.
+**1. Tool retry loops** \u2014 Same tool called 5+ times consecutively. Agent confusion signal.
 
-**2. Repeating errors** — Same error 5+ times across sessions. Unfixed bug, not a fluke.
+**2. Repeating errors** \u2014 Same error 5+ times across sessions. Unfixed bug, not a fluke.
 
-**3. User frustration** — Keywords like "you said this already", "why again", "다시", "또" — with context filtering to reduce false positives.
+**3. User frustration** \u2014 Keywords like "you said this already", "why again", "\ub2e4\uc2dc", "\ub610" \u2014 with context filtering to reduce false positives.
 
-**4. AGENTS.md violations** — Rules broken in actual `exec` tool calls (not conversation text). Cross-referenced against your current AGENTS.md.
+**4. AGENTS.md violations** \u2014 Rules broken in actual `exec` tool calls (not conversation text). Cross-referenced against your current AGENTS.md.
 
-**5. Heavy sessions** — Sessions hitting >85% context window. Tasks that should be sub-agents.
+**5. Heavy sessions** \u2014 Sessions hitting >85% context window. Tasks that should be sub-agents.
 
-**6. Unresolved learnings** — High-priority items in `.learnings/` not yet promoted to AGENTS.md.
+**6. Unresolved learnings** \u2014 High-priority items in `.learnings/` not yet promoted to AGENTS.md.
 
 Full details: [docs/DETECTION-PATTERNS.md](docs/DETECTION-PATTERNS.md)
 
@@ -93,30 +94,30 @@ Full details: [docs/DETECTION-PATTERNS.md](docs/DETECTION-PATTERNS.md)
 
 Proposals are **template-based**, not LLM-generated. Each detected pattern maps to a structured template with:
 
-- **Evidence** — exact log excerpts, occurrence counts, affected sessions
-- **Before** — current state in AGENTS.md (or "no rule exists")
-- **After** — concrete diff: what to add or change
-- **Section** — which AGENTS.md section to update
+- **Evidence** \u2014 exact log excerpts, occurrence counts, affected sessions
+- **Before** \u2014 current state in AGENTS.md (or "no rule exists")
+- **After** \u2014 concrete diff: what to add or change
+- **Section** \u2014 which AGENTS.md section to update
 
 Example output for a detected violation:
 
 ```
-[PROPOSAL #1 — HIGH] git 직접 명령 4회 위반 감지
+[PROPOSAL #1 \u2014 HIGH] git \uc9c1\uc811 \uba85\ub839 4\ud68c \uc704\ubc18 \uac10\uc9c0
 
 Evidence:
-  - Session #325: exec "git commit -m 'fix'" ← violates AGENTS.md rule
+  - Session #325: exec "git commit -m 'fix'" \u2190 violates AGENTS.md rule
   - Session #331: exec "git add -A && git commit"
   - Total: 4 violations in 3 weeks
 
 Before:
-  직접 git 명령 금지.
+  \uc9c1\uc811 git \uba85\ub839 \uae08\uc9c0.
 
 After (diff)
-+ ⚠️ CRITICAL — NEVER run git directly. Violated 4× in 3 weeks.
-  직접 git 명령 금지. (git add / git commit / git push 전부 포함)
-  충돌 시 정우님께 보고.
++ \u26a0\ufe0f CRITICAL \u2014 NEVER run git directly. Violated 4\u00d7 in 3 weeks.
+  \uc9c1\uc811 git \uba85\ub839 \uae08\uc9c0. (git add / git commit / git push \uc804\ubd80 \ud3ec\ud568)
+  \ucda9\ub3cc \uc2dc \uc815\uc6b0\ub2d8\uaed8 \ubcf4\uace0.
 
-React ✅ to apply | ❌ to reject (add reason)
+React \u2705 to apply | \u274c to reject (add reason)
 ```
 
 ---
@@ -141,20 +142,20 @@ After 4 weeks running on a real OpenClaw setup:
 ```
 [Session #312] User: "why are you calling git directly again?? I told you to use git-sync.sh"
 [Session #318] User: "you did it again, direct git command"
-[Session #325] exec: git commit -m "fix"   ← AGENTS.md violation flagged
+[Session #325] exec: git commit -m "fix"   \u2190 AGENTS.md violation flagged
 [Session #331] User: "stop using git directly!!!"
 ```
 
 **After proposal approved:**
 
 ```diff
-## 🔄 Git Sync
+## \ud83d\udd04 Git Sync
 
-+ ⚠️  CRITICAL — NEVER run git directly. Violated 4× in 3 weeks.
-  파일 수정 전 반드시: `bash ~/openclaw/scripts/git-sync.sh`
-- 직접 git 명령 금지.
-+ 직접 git 명령 금지. (git add / git commit / git push 전부 포함)
-  충돌 시 정우님께 보고.
++ \u26a0\ufe0f  CRITICAL \u2014 NEVER run git directly. Violated 4\u00d7 in 3 weeks.
+  \ud30c\uc77c \uc218\uc815 \uc804 \ubc18\ub4dc\uc2dc: `bash ~/openclaw/scripts/git-sync.sh`
+- \uc9c1\uc811 git \uba85\ub839 \uae08\uc9c0.
++ \uc9c1\uc811 git \uba85\ub839 \uae08\uc9c0. (git add / git commit / git push \uc804\ubd80 \ud3ec\ud568)
+  \ucda9\ub3cc \uc2dc \uc815\uc6b0\ub2d8\uaed8 \ubcf4\uace0.
 ```
 
 ---
@@ -163,10 +164,10 @@ After 4 weeks running on a real OpenClaw setup:
 
 After analysis, a report is posted to your configured channel. React to approve or reject:
 
-- ✅ Approve all → auto-apply to AGENTS.md + git commit
-- 1️⃣–5️⃣ Approve only that numbered proposal
-- ❌ Reject all (add a comment with reason — it feeds back into next analysis)
-- 🔄 Request revision (describe what you want changed)
+- \u2705 Approve all \u2192 auto-apply to AGENTS.md + git commit
+- 1\ufe0f\u20e3\u20135\ufe0f\u20e3 Approve only that numbered proposal
+- \u274c Reject all (add a comment with reason \u2014 it feeds back into next analysis)
+- \ud83d\udd04 Request revision (describe what you want changed)
 
 Rejected proposal IDs are stored in `data/rejected-proposals.json` and excluded from future analyses.
 
@@ -174,9 +175,9 @@ Rejected proposal IDs are stored in `data/rejected-proposals.json` and excluded 
 
 ## Pairs Well With
 
-**[openclaw-self-healing](https://github.com/Ramsbaby/openclaw-self-healing)** — Crash recovery + auto-repair.
+**[openclaw-self-healing](https://github.com/Ramsbaby/openclaw-self-healing)** \u2014 Crash recovery + auto-repair.
 
-Self-healing fires on crash. Self-evolving runs weekly to fix what *causes* the crashes — including promoting self-healing error patterns directly into AGENTS.md rules.
+Self-healing fires on crash. Self-evolving runs weekly to fix what *causes* the crashes \u2014 including promoting self-healing error patterns directly into AGENTS.md rules.
 
 Integration: set `SEA_LEARNINGS_PATHS` to include your self-healing `.learnings/` directory. Detected errors automatically surface as self-evolving proposals.
 
@@ -205,7 +206,7 @@ Each line written to `~/.openclaw/logs/sessions.jsonl`:
 {"ts":"2026-03-11T08:00:00Z","event":"session_start","data":{"session_id":"abc","model":"claude-opus-4-5","task":"standup"}}
 ```
 
-`analyze-behavior.sh` v3.1 automatically reads `sessions.jsonl` if present and adds structured metrics (`jsonl_summary`) to its JSON output — top tools by call volume, recent errors with full metadata.
+`analyze-behavior.sh` v3.1 automatically reads `sessions.jsonl` if present and adds structured metrics (`jsonl_summary`) to its JSON output \u2014 top tools by call volume, recent errors with full metadata.
 
 ---
 
@@ -215,7 +216,7 @@ Capability Evolver was recently suspended from ClawHub. If you're looking for an
 
 | Feature | Capability Evolver | Self-Evolving |
 |---|---|---|
-| Silent modification | ⚠️ Yes (on by default) | ❌ Never |
+| Silent modification | \u26a0\ufe0f Yes (on by default) | \u274c Never |
 | Human approval | Optional (off by default) | Required. Always. |
 | API calls per run | Multiple LLM calls | Zero |
 | Transparency | Closed analysis | Full audit log |
@@ -242,6 +243,10 @@ notify:
   discord_channel: ""     # Discord channel ID
   telegram_chat_id: ""    # Optional
 
+# GitHub integration (for --create-issue)
+# github:
+#   repo: "owner/repo"    # auto-detected from git remote if blank
+
 # Detection thresholds
 thresholds:
   tool_retry: 5           # Consecutive calls to flag
@@ -262,9 +267,19 @@ bash scripts/generate-proposal.sh --dry-run
 # Scan more history
 ANALYSIS_DAYS=14 bash scripts/generate-proposal.sh
 
+# Auto-create a GitHub Issue with the weekly proposal report
+bash scripts/generate-proposal.sh --create-issue
+
+# Specify repo explicitly (or set EVOLVING_GITHUB_REPO env var)
+EVOLVING_GITHUB_REPO="owner/repo" bash scripts/generate-proposal.sh --create-issue
+
 # Reset rejection history
 rm data/rejected-proposals.json
 ```
+
+> **`--create-issue` requirements:** `gh` CLI installed + authenticated (`gh auth login`).
+> Repo is auto-detected from `git remote origin` if `EVOLVING_GITHUB_REPO` is not set.
+> Labels `self-evolving` and `automated` are created automatically if they don't exist.
 
 ---
 
@@ -272,34 +287,34 @@ rm data/rejected-proposals.json
 
 ```
 openclaw-self-evolving/
-├── scripts/
-│   ├── analyze-behavior.sh      # Log analysis engine (v3.1) — JSONL-aware
-│   ├── session-logger.sh        # Structured JSONL event logger (dual-mode: library + CLI)
-│   ├── generate-proposal.sh     # Pipeline orchestrator + proposal builder (705 lines)
-│   ├── setup-wizard.sh          # Interactive setup + cron registration
-│   └── lib/config-loader.sh     # Config loader (sourced by scripts)
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── DETECTION-PATTERNS.md
-│   └── QUICKSTART.md
-├── test/
-│   └── fixtures/                # Sample session JSONL for testing / contributing
-├── data/
-│   ├── proposals/               # Saved proposal JSON files
-│   └── rejected-proposals.json  # Rejection history
-└── config.yaml.example
+\u251c\u2500\u2500 scripts/
+\u2502   \u251c\u2500\u2500 analyze-behavior.sh      # Log analysis engine (v3.1) \u2014 JSONL-aware
+\u2502   \u251c\u2500\u2500 session-logger.sh        # Structured JSONL event logger (dual-mode: library + CLI)
+\u2502   \u251c\u2500\u2500 generate-proposal.sh     # Pipeline orchestrator + proposal builder (v3.1)
+\u2502   \u251c\u2500\u2500 setup-wizard.sh          # Interactive setup + cron registration
+\u2502   \u2514\u2500\u2500 lib/config-loader.sh     # Config loader (sourced by scripts)
+\u251c\u2500\u2500 docs/
+\u2502   \u251c\u2500\u2500 ARCHITECTURE.md
+\u2502   \u251c\u2500\u2500 DETECTION-PATTERNS.md
+\u2502   \u2514\u2500\u2500 QUICKSTART.md
+\u251c\u2500\u2500 test/
+\u2502   \u2514\u2500\u2500 fixtures/                # Sample session JSONL for testing / contributing
+\u251c\u2500\u2500 data/
+\u2502   \u251c\u2500\u2500 proposals/               # Saved proposal JSON files
+\u2502   \u2514\u2500\u2500 rejected-proposals.json  # Rejection history
+\u2514\u2500\u2500 config.yaml.example
 ```
 
 ---
 
-## 🌐 OpenClaw Ecosystem
+## \ud83c\udf10 OpenClaw Ecosystem
 
 | Project | Role |
 |---------|------|
-| **[openclaw-self-evolving](https://github.com/Ramsbaby/openclaw-self-evolving)** ← you are here | Weekly log review → propose AGENTS.md improvements |
-| **[openclaw-self-healing](https://github.com/Ramsbaby/openclaw-self-healing)** | 4-tier autonomous crash recovery — gateway back in ~30s |
-| **[openclaw-memorybox](https://github.com/Ramsbaby/openclaw-memorybox)** | Zero-dep memory hygiene CLI — prevents bloat crashes |
-| **[claude-discord-bridge](https://github.com/Ramsbaby/claude-discord-bridge)** | Full AI company-in-a-box — where all OpenClaw tools run in production |
+| **[openclaw-self-evolving](https://github.com/Ramsbaby/openclaw-self-evolving)** \u2190 you are here | Weekly log review \u2192 propose AGENTS.md improvements |
+| **[openclaw-self-healing](https://github.com/Ramsbaby/openclaw-self-healing)** | 4-tier autonomous crash recovery \u2014 gateway back in ~30s |
+| **[openclaw-memorybox](https://github.com/Ramsbaby/openclaw-memorybox)** | Zero-dep memory hygiene CLI \u2014 prevents bloat crashes |
+| **[claude-discord-bridge](https://github.com/Ramsbaby/claude-discord-bridge)** | Full AI company-in-a-box \u2014 where all OpenClaw tools run in production |
 
 All MIT licensed, all battle-tested on the same 24/7 production instance.
 
@@ -307,16 +322,15 @@ All MIT licensed, all battle-tested on the same 24/7 production instance.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). PRs welcome — especially:
+See [CONTRIBUTING.md](CONTRIBUTING.md). PRs welcome \u2014 especially:
 
 - New detection patterns for `analyze-behavior.sh`
 - Better false-positive filtering
-- Support for other platforms (currently OpenClaw-specific — log format abstraction layer planned)
+- Support for other platforms (currently OpenClaw-specific \u2014 log format abstraction layer planned)
 - Test fixtures in `test/fixtures/` (sample `.jsonl` files to enable contributor testing without real logs)
 
 ---
 
 ## License
 
-[MIT](LICENSE) — do whatever you want, just don't remove the "human approval required" part. That part matters.
-
+[MIT](LICENSE) \u2014 do whatever you want, just don't remove the "human approval required" part. That part matters.

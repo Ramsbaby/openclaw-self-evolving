@@ -21,11 +21,20 @@ expire_days: 30           # Days before old proposals are archived
 #   discord_channel: "YOUR_CHANNEL_ID"
 #   # telegram_chat_id: ""
 
+# GitHub integration (used by --create-issue flag)
+# Auto-detected from git remote if not set here.
+# Set EVOLVING_GITHUB_REPO env var as an alternative.
+# github:
+#   repo: ""               # "owner/repo" — e.g., "Ramsbaby/openclaw-self-evolving"
+#   labels:                # Labels applied to created issues
+#     - "self-evolving"
+#     - "automated"
+
 # Complaint patterns to detect (Korean defaults)
 # complaint_patterns:
-#   - "말했잖아"
-#   - "했잖아"
+#   - "말했잌아"
+#   - "했잌아"
 #   - "이미 말했"
-#   - "왜 또"
+#   - "왓 또"
 #   - "몇 번"
 #   - "기억 못"
