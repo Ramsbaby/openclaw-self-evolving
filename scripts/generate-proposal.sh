@@ -13,7 +13,7 @@
 #   bash generate-proposal.sh --dry-run               # analyze only, no saves
 #
 # 변경 이력:
-#   v3.1 (2026-03-18) — GitHub Issue 자동 생성 쫐가
+#   v3.1 (2026-03-18) — GitHub Issue 자동 생성 추가
 #     - --create-issue / -i 플래그: 주간 제안을 GitHub Issue로 자동 등록
 #     - create_github_issue(): gh CLI 래퍼, git remote 자동 감지
 #     - EVOLVING_GITHUB_REPO 환경변수 또는 git remote 사용
@@ -59,6 +59,11 @@ EXPIRE_DAYS="${SEA_EXPIRE_DAYS:-30}"
 VERBOSE="${SEA_VERBOSE:-true}"
 AGENTS_MD="${AGENTS_MD:-$HOME/openclaw/AGENTS.md}"
 
+# log() must be defined before any call site
+log() {
+  [ "$VERBOSE" = "true" ] && echo "[$(date '+%H:%M:%S')] $*" >&2 || true
+}
+
 # --dry-run flag: analyze and print proposals, but do not save files or send notifications
 # --create-issue / -i flag: post weekly proposal report as a GitHub Issue
 DRY_RUN=false
@@ -69,15 +74,11 @@ for arg in "$@"; do
     --create-issue|-i) CREATE_ISSUE=true ;;
   esac
 done
-[ "$DRY_RUN" = "true" ] && log "\ud83d\udd0d DRY RUN mode \u2014 no files will be modified, no notifications sent"
-[ "$CREATE_ISSUE" = "true" ] && log "\ud83d\udc19 GitHub Issue \ubaa8\ub4dc \ud65c\uc131 \u2014 \uc81c\uc548\uc774 GitHub Issue\ub85c \ub4f1\ub85d\ub429\ub2c8\ub2e4"
+[ "$DRY_RUN" = "true" ] && log "🔍 DRY RUN mode — no files will be modified, no notifications sent"
+[ "$CREATE_ISSUE" = "true" ] && log "🐙 GitHub Issue 모드 활성 — 제안이 GitHub Issue로 등록됩니다"
 
 mkdir -p "$PROPOSAL_DIR"
 mkdir -p "$SKILL_DIR/data"
-
-log() {
-  [ "$VERBOSE" = "true" ] && echo "[$(date '+%H:%M:%S')] $*" >&2 || true
-}
 
 # ── Step 1: 행동 분석 실행 ────────────────────────────────────
 run_analysis() {
@@ -258,7 +259,7 @@ for log_err in log_errors:
             ),
             'before': f'`{fname}` 에러 발생 시 별도 조치 없음',
             'after': (
-                f'## \ud83d\udd34 반복 에러 즉시 대응 프로토콜\n'
+                f'## 🔴 반복 에러 즉시 대응 프로토콜\n'
                 f'동일 에러 5회 이상 반복 시:\n'
                 f'1. 해당 크론/스크립트 실행 중단\n'
                 f'2. 에러 원인 파악 후 수정\n'
@@ -288,7 +289,7 @@ if persistent_errors:
         ),
         'before': '연속 실패 크론에 대한 자동 보고 규칙 없음',
         'after': (
-            '## \ud83d\udd34 크론 연속 실패 대응\n'
+            '## 🔴 크론 연속 실패 대응\n'
             '다음 크론 즉시 점검 필요:\n' +
             '\n'.join(f'- `{e["name"]}`: {e["consecutive_errors"]}회 연속 실패' for e in persistent_errors[:3]) +
             '\n\n점검 방법:\n'
@@ -326,7 +327,7 @@ for v in high_violations[:2]:
         ),
         'before': v.get('rule', ''),
         'after': (
-            f'## \u2705 올바른 방법\n'
+            f'## ✅ 올바른 방법\n'
             f'```bash\n'
             f'{fix}\n'
             f'```\n'
@@ -350,16 +351,16 @@ if heavy_sessions >= 3 or max_comp >= 20:
         'evidence': (
             f'콤팩션 5회 이상 발생한 세션: {heavy_sessions}개\n'
             f'최대 콤팩션 횟수: {max_comp}회 (1세션에서)\n'
-            f'→ 콤팩션 = 컨텍스트 손실 위험 + 토큰 낙비\n'
+            f'→ 콤팩션 = 컨텍스트 손실 위험 + 토큰 낭비\n'
             f'→ 복잡한 작업은 서브에이전트로 분리가 효과적'
         ),
         'before': '장시간 세션에 대한 분리 가이드 없음',
         'after': (
-            '## \ud83d\udce6 서브에이전트 분리 기준\n'
+            '## 📦 서브에이전트 분리 기준\n'
             '다음 조건 중 하나라도 해당하면 서브에이전트 사용:\n'
             '- 예상 작업 시간 > 10분\n'
             '- 도구 호출 예상 > 20회\n'
-            '- 메인 체널 컨텍스트 오염 우려\n'
+            '- 메인 채널 컨텍스트 오염 우려\n'
             '→ `subagents` 도구로 spawn, 결과는 push-based 자동 보고'
         ),
         'section': '복잡한 배경 작업',
@@ -383,7 +384,7 @@ if high_priority > 0:
         ),
         'before': '미해결 .learnings/ 이슈가 AGENTS.md에 미반영',
         'after': (
-            '## \ud83d\udcda .learnings/ 승격 프로토콜\n'
+            '## 📚 .learnings/ 승격 프로토콜\n'
             '매주 일요일 heartbeat에서:\n'
             '```bash\n'
             'grep -r "Priority**: high" ~/openclaw/.learnings/ | head -10\n'
@@ -415,10 +416,10 @@ if total_hits >= 3:
         ),
         'before': '반복 불만 발생 시 즉각 대응 규칙 없음',
         'after': (
-            '## \ud83d\udd01 불만 감지 즉시 대응\n'
+            '## 🔁 불만 감지 즉시 대응\n'
             '사용자가 반복/재촉 표현 사용 시:\n'
             '1. 현재 진행 상황 즉시 보고\n'
-            '2. SESSION-STATE.md에 "왕 반복 딌는가" 기록\n'
+            '2. SESSION-STATE.md에 "반복 불만 감지" 기록\n'
             '3. 근본 원인 1문장으로 명시 후 해결 방법 제안\n'
             '4. 다음 분석에서 패턴 추적'
         ),
@@ -532,66 +533,66 @@ real_proposals = [p for p in proposals if p.get('id') != 'no-issues-found']
 proposal_count = len(real_proposals)
 
 source_emoji = {
-    'retry_analysis': '\ud83d\udd01',
-    'repeating_log_errors': '\ud83d\udc1b',
-    'cron_errors': '\ud83d\udd34',
-    'agents_md_violation': '\u26a0\ufe0f',
-    'learnings_integration': '\ud83d\udcda',
-    'complaint_patterns': '\ud83d\udcac',
-    'session_health': '\ud83d\udce6',
-    'system': '\u2139\ufe0f'
+    'retry_analysis': '🔁',
+    'repeating_log_errors': '🐛',
+    'cron_errors': '🔴',
+    'agents_md_violation': '⚠️',
+    'learnings_integration': '📚',
+    'complaint_patterns': '💬',
+    'session_health': '📦',
+    'system': 'ℹ️'
 }
 
 diff_type_label = {
-    'agents_md_addition': '\ud83d\udcdd AGENTS.md \ucd94\uac00',
-    'agents_md_update': '\u270f\ufe0f AGENTS.md \uc218\uc815',
-    'action_required': '\ud83d\udea8 \uc989\uc2dc \uc870\uce58 \ud544\uc694',
+    'agents_md_addition': '📝 AGENTS.md 추가',
+    'agents_md_update': '✏️ AGENTS.md 수정',
+    'action_required': '🚨 즉시 조치 필요',
     'none': ''
 }
 
 lines = []
-lines.append("## \ud83e\uddac Self-Evolving Agent \uc8fc\uac04 \ubd84\uc11d \ub9ac\ud3ec\ud2b8 v3.1")
+lines.append("## 🧬 Self-Evolving Agent 주간 분석 리포트 v3.1")
 lines.append("")
-lines.append(f"**\ubd84\uc11d \uae30\uac04:** {date_from} ~ {date_to}")
-lines.append(f"**\ubd84\uc11d\ub41c \uc138\uc158:** {session_count}\uac1c")
+lines.append(f"**분석 기간:** {date_from} ~ {date_to}")
+lines.append(f"**분석된 세션:** {session_count}개")
 
 if retry_events > 0:
-    lines.append(f"**\ub3c4\uad6c \uc7ac\uc2dc\ub3c4 \uc774\ubca4\ud2b8:** {retry_events}\uac74 \u2190 \uc0c8\ub85c \uac10\uc9c0")
+    lines.append(f"**도구 재시도 이벤트:** {retry_events}건 ← 새로 감지")
 if total_hits > 0:
-    lines.append(f"**\uc2e4\uc81c \ubd88\ub9cc \ud45c\ud604:** {total_hits}\uac74 (\uc77c\ubc18 \uc694\uccad \ud45c\ud604 \uc81c\uc678)")
+    lines.append(f"**실제 불만 표현:** {total_hits}건 (일반 요청 표현 제외)")
 if heavy_sessions > 0:
-    lines.append(f"**\uacfc\ub3c4\ud55c \uc138\uc158:** {heavy_sessions}\uac1c (\ucf64\ud329\uc158 5\ud68c \uc774\uc0c1)")
+    lines.append(f"**과도한 세션:** {heavy_sessions}개 (콤팩션 5회 이상)")
 
-lines.append(f"**\uac1c\uc120 \uc81c\uc548:** {proposal_count}\uac1c")
+lines.append(f"**개선 제안:** {proposal_count}개")
 lines.append("")
 
 if proposal_count == 0:
-    lines.append("\u2705 **\uc774\ubc88 \uc8fc \ubc1c\uacac\ub41c \uac1c\uc120 \uc0ac\ud56d \uc5c6\uc74c**")
-    lines.append("\ub2e4\uc74c \ubd84\uc11d \ub54c \ub2e4\uc2dc \ud655\uc778\ud569\ub2c8\ub2e4.")
+    lines.append("✅ **이번 주 발견된 개선 사항 없음**")
+    lines.append("다음 분석 때 다시 확인합니다.")
 else:
     lines.append("---")
     lines.append("")
 
     for i, p in enumerate(real_proposals, 1):
-        sev_emoji = {'high': '\ud83d\udd34', 'medium': '\ud83d\udfe1', 'low': '\ud83d\udfe2'}.get(p.get('severity', 'low'), '\ud83d\udfe2')
-        src_emoji = source_emoji.get(p.get('source', ''), '\ud83d\udccc')
+        sev_emoji = {'high': '🔴', 'medium': '🟡', 'low': '🟢'}.get(p.get('severity', 'low'), '🟢')
+        src_emoji = source_emoji.get(p.get('source', ''), '📌')
         diff_label = diff_type_label.get(p.get('diff_type', ''), '')
 
-        lines.append(f"### {src_emoji} \uc81c\uc548 #{i}: {p.get('title', '')}")
+        lines.append(f"### {src_emoji} 제안 #{i}: {p.get('title', '')}")
         lines.append("")
-        lines.append(f"**\uc2ec\uac01\ub3c4:** {sev_emoji} {p.get('severity', '').upper()}  |  **\uc720\ud615:** {diff_label}")
+        lines.append(f"**심각도:** {sev_emoji} {p.get('severity', '').upper()}  |  **유형:** {diff_label}")
         lines.append("")
         evidence = p.get('evidence', '')
-        lines.append("> **\uadfc\uac70:**")
+        lines.append("> **근거:**")
         for ev_line in evidence.split('\n'):
             lines.append(f"> {ev_line}" if ev_line else ">")
         lines.append("")
-        lines.append("**Before (\ud604\uc7ac):**")
+        lines.append("**Before (현재):**")
         lines.append("```")
         lines.append(p.get('before', ''))
         lines.append("```")
         lines.append("")
-        lines.append("**After (\uc81c\uc548):**")
+        lines.append("**After (제안):**")
         lines.append("```")
         lines.append(p.get('after', ''))
         lines.append("```")
@@ -602,23 +603,23 @@ else:
 
     lines.append("---")
     lines.append("")
-    lines.append("### \u2705 \uc2b9\uc778 \ubc29\ubc95")
+    lines.append("### ✅ 승인 방법")
     lines.append("")
-    lines.append("\uc774\ubaa8\uc9c0 \ubc18\uc751\uc73c\ub85c \ube60\ub974\uac8c \uc2b9\uc778/\uac70\ubd80:")
+    lines.append("이모지 반응으로 빠르게 승인/거부:")
     lines.append("")
-    lines.append("| \ubc18\uc751 | \uc758\ubbf8 |")
-    lines.append("|------|------|")  
-    lines.append("| \u2705 | \uc804\uccb4 \uc2b9\uc778 \u2192 AGENTS.md \uc790\ub3d9 \ubc18\uc601 + git commit |")
-    lines.append("| 1\ufe0f\u20e3 ~ 5\ufe0f\u20e3 | \ud574\ub2f9 \ubc88\ud638 \uc81c\uc548\ub9cc \uc2b9\uc778 |")
-    lines.append("| \u274c | \uc804\uccb4 \uac70\ubd80 (\ub313\uae00\ub85c \uc774\uc720 \ub0a8\uae30\uba74 \ub2e4\uc74c \ubd84\uc11d\uc5d0 \ubc18\uc601) |")
-    lines.append("| \ud83d\udd04 | \uc218\uc815 \uc694\uccad (\ub313\uae00\ub85c \uc6d0\ud558\ub294 \ub0b4\uc6a9 \uba85\uc2dc) |")
+    lines.append("| 반응 | 의미 |")
+    lines.append("|------|------|")
+    lines.append("| ✅ | 전체 승인 → AGENTS.md 자동 반영 + git commit |")
+    lines.append("| 1️⃣ ~ 5️⃣ | 해당 번호 제안만 승인 |")
+    lines.append("| ❌ | 전체 거부 (댓글로 이유 남기면 다음 분석에 반영) |")
+    lines.append("| 🔄 | 수정 요청 (댓글로 원하는 내용 명시) |")
     lines.append("")
-    lines.append("> \uac70\ubd80 \uc774\uc720\ub294 \ub2e4\uc74c \ubd84\uc11d\uc5d0 \ubc18\uc601\ub429\ub2c8\ub2e4. \ud53c\ub4dc\ubc31\uc774 \uc788\uc73c\uba74 \uaf00 \ub0a8\uaca8\uc8fc\uc138\uc694.")
+    lines.append("> 거부 이유는 다음 분석에 반영됩니다. 피드백이 있으면 꼭 남겨주세요.")
 
 print('\n'.join(lines))
 REPORT_PY_EOF
 
-  python3 "$tmp_rpt" "$tmp_proposals" "$tmp_meta" 2>/dev/null || echo "(\ub9ac\ud3ec\ud2b8 \uc0dd\uc131 \uc2e4\ud328)"
+  python3 "$tmp_rpt" "$tmp_proposals" "$tmp_meta" 2>/dev/null || echo "(리포트 생성 실패)"
   rm -f "$tmp_proposals" "$tmp_meta" "$tmp_rpt"
 }
 
@@ -685,7 +686,7 @@ for fname in os.listdir(proposal_dir):
             shutil.move(fpath, os.path.join(archive_dir, fname))
             moved += 1
     except: pass
-if moved > 0: print(f'{moved}\uac1c \ub9cc\ub8cc \uc81c\uc548 \uc544\uce74\uc774\ube0c \uc644\ub8cc')
+if moved > 0: print(f'{moved}개 만료 제안 아카이브 완료')
 " 2>/dev/null || true
 }
 
@@ -701,31 +702,31 @@ create_github_issue() {
   fi
 
   if [ -z "$github_repo" ]; then
-    log "⚠\ufe0f  EVOLVING_GITHUB_REPO not set and git remote not detected \u2014 skipping issue creation"
+    log "⚠️  EVOLVING_GITHUB_REPO not set and git remote not detected — skipping issue creation"
     log "   Set EVOLVING_GITHUB_REPO=owner/repo in your environment to enable this feature"
     return 0
   fi
 
   if ! command -v gh &>/dev/null; then
-    log "⚠\ufe0f  gh CLI not found \u2014 skipping issue creation"
+    log "⚠️  gh CLI not found — skipping issue creation"
     log "   Install: https://cli.github.com"
     return 0
   fi
 
   # gh 인증 확인
   if ! gh auth status &>/dev/null; then
-    log "⚠\ufe0f  gh CLI not authenticated \u2014 skipping issue creation"
+    log "⚠️  gh CLI not authenticated — skipping issue creation"
     log "   Run: gh auth login"
     return 0
   fi
 
   local ts
   ts=$(date '+%Y-%m-%d')
-  local title="\ud83e\uddac Self-Evolving Weekly Proposal \u2014 ${ts}"
+  local title="🧬 Self-Evolving Weekly Proposal — ${ts}"
 
-  log "GitHub Issue \uc0dd\uc131 \uc911 (${github_repo})..."
+  log "GitHub Issue 생성 중 (${github_repo})..."
 
-  # \ub808\uc774\ube14 \uc0ac\uc804 \uc0dd\uc131 (\uc774\ubbf8 \uc874\uc7ac\ud574\ub3c4 \uc5d0\ub7ec \ubb34\uc2dc)
+  # 레이블 사전 생성 (이미 존재해도 에러 무시)
   gh label create "self-evolving" --color "0052cc" --description "Auto-generated by openclaw-self-evolving" \
     --repo "$github_repo" 2>/dev/null || true
   gh label create "automated"    --color "e4e669" --description "Automated issue" \
@@ -739,18 +740,16 @@ create_github_issue() {
     --body "$report" 2>/dev/null || echo "")
 
   if [ -n "$issue_url" ]; then
-    log "\u2705 Issue \uc0dd\uc131 \uc644\ub8cc: $issue_url"
+    log "✅ Issue 생성 완료: $issue_url"
     echo "$issue_url"
   else
-    log "⚠\ufe0f  Issue \uc0dd\uc131 \uc2e4\ud328 (gh auth status \ud655\uc778 \ud544\uc694)"
+    log "⚠️  Issue 생성 실패 (gh auth status 확인 필요)"
   fi
 }
 
-# ── \uba54\uc778 ──────────────────────────────────────────────────────
-log "=== generate-proposal.sh v3.1 \uc2dc\uc791 ==="
-
+# ── 메인 ──────────────────────────────────────────────────────
 main() {
-  log "=== generate-proposal.sh v3.1 \uc2dc\uc791 ==="
+  log "=== generate-proposal.sh v3.1 시작 ==="
 
   run_analysis
 
@@ -758,11 +757,11 @@ main() {
   proposals_json="$(generate_proposals 2>/dev/null || echo '[]')"
 
   if [ -z "$proposals_json" ] || [ "$proposals_json" = "[]" ] || [ "$proposals_json" = "null" ]; then
-    proposals_json='[{"id":"no-issues-found","source":"system","title":"\uc774\ubc88 \uc8fc \ubc1c\uacac\ub41c \uac1c\uc120 \ud544\uc694 \uc0ac\ud56d \uc5c6\uc74c","severity":"info","evidence":"\ubd84\uc11d \uacb0\uacfc \uc8fc\uc694 \ud328\ud134 \uc5c6\uc74c","before":"N/A","after":"N/A","section":"N/A","diff_type":"none"}]'
+    proposals_json='[{"id":"no-issues-found","source":"system","title":"이번 주 발견된 개선 필요 사항 없음","severity":"info","evidence":"분석 결과 주요 패턴 없음","before":"N/A","after":"N/A","section":"N/A","diff_type":"none"}]'
   fi
 
   if [ "$DRY_RUN" = "true" ]; then
-    log "\ud83d\udd0d [DRY RUN] Proposals (not saved, not sent):"
+    log "🔍 [DRY RUN] Proposals (not saved, not sent):"
     echo "$proposals_json" | python3 -c "
 import sys, json
 proposals = json.load(sys.stdin)
@@ -771,17 +770,17 @@ for i, p in enumerate(proposals, 1):
     print(f'       Evidence: {p.get(\"evidence\",\"\")[:120]}')
     print()
 " 2>/dev/null || echo "$proposals_json"
-    log "=== generate-proposal.sh v3.1 \uc644\ub8cc (dry run) ==="
+    log "=== generate-proposal.sh v3.1 완료 (dry run) ==="
     return 0
   fi
 
   local saved_file
   saved_file="$(save_proposal "$proposals_json" 2>/dev/null || echo "")"
-  [ -n "$saved_file" ] && log "\uc81c\uc548 \uc800\uc7a5: $saved_file"
+  [ -n "$saved_file" ] && log "제안 저장: $saved_file"
 
   archive_expired_proposals 2>/dev/null || true
 
-  # \ub9ac\ud3ec\ud2b8 \uc0dd\uc131 \ud6c4 \ud45c\uc900\ucd9c\ub825 + GitHub Issue \uc120\ud0dd\uc801 \ub4f1\ub85d
+  # 리포트 생성 후 표준출력 + GitHub Issue 선택적 등록
   local report
   report="$(build_report "$proposals_json")"
   echo "$report"
@@ -790,7 +789,7 @@ for i, p in enumerate(proposals, 1):
     create_github_issue "$report"
   fi
 
-  log "=== generate-proposal.sh v3.1 \uc644\ub8cc ==="
+  log "=== generate-proposal.sh v3.1 완료 ==="
 }
 
 main "$@"
