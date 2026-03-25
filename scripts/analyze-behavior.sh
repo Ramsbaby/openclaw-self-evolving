@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-# analyze-behavior.sh — OpenClaw Self-Evolving Agent v3.0
+# analyze-behavior.sh — OpenClaw Self-Evolving Agent v3.1
 # Repo: https://github.com/Ramsbaby/openclaw-self-evolving
 #
 # Scans recent session logs and produces a structured JSON
@@ -18,17 +18,13 @@
 #     - session-logger.sh 컴패니언 스크립트 연동
 #   v3.0 (2026-02-17) — 품질 비평 기반 전면 개선
 #     - 버그 수정: tool_use → toolCall (실제 필드명)
-#     - 연속 도구 재시도 분석 추가 (exec 5210회 패턴 감지)
+#     - 연속 도구 재시도 분석 추가 (exec 5회+ 패턴 감지)
 #     - 불만 패턴 맥락 필터링 강화 (일반 요청과 구분)
 #     - 반복 에러 루트 코즈 분석 (같은 에러 N회 = 버그 미수정)
 #     - violations를 exec 명령에서만 탐지 (응답 전체 grep 제거)
 #     - 세션 길이 이상치 감지 (compaction 횟수)
 #   v2.0 (2026-02-17) — config.yaml 지원, .learnings/ 연동
 #   v1.1 (2026-02-16) — 초기 버전
-#
-# 사용법:
-#   bash analyze-behavior.sh [출력JSON경로]
-#   ANALYSIS_DAYS=14 bash analyze-behavior.sh
 # ============================================================
 
 # SECURITY MANIFEST:
@@ -310,7 +306,7 @@ for filepath in session_files:
                                     continue
                                 c_type = c.get('type', '')
 
-                                # v3.0 수정: 실제 필드명 toolCall (구버전 tool_use 제거)
+                                # v3.0: toolCall — extract tool name and exec commands
                                 if c_type == 'toolCall':
                                     name = c.get('name', '')
                                     tool_seq.append(name)
@@ -329,8 +325,9 @@ for filepath in session_files:
                                                 cmd = args_dict.get('command', '')
                                                 if cmd:
                                                     exec_commands.append(cmd)
-                                    elif c_type == 'text':
-                                        text += c.get('text', '')
+                                # text block — collect assistant/user text for complaint analysis
+                                elif c_type == 'text':
+                                    text += c.get('text', '')
 
                         if text:
                             if role == 'user':
@@ -424,8 +421,6 @@ for pattern in complaint_patterns:
     hit_sentences = []
     for sent in sentences:
         if pattern in sent and sent not in seen_sentences:
-            # 추가 맥락 필터: 해당 문장이 실제 불만 문맥인지 확인
-            # 예: "다시 확인해줘" (정상) vs "다시 또 오류야" (불만)
             cleaned = sent.strip()
             if len(cleaned) > 5:  # 너무 짧은 문장 제외
                 hit_sentences.append(cleaned)
@@ -586,7 +581,7 @@ result = {
         'analysis_timestamp': datetime.now().isoformat(),
         'analysis_days': analysis_days,
         'session_count': len(session_files),
-        'version': '3.0.0'
+        'version': '3.1.0'
     },
     'complaints': complaints,
     'errors': errors,
