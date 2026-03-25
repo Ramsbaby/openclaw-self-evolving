@@ -7,6 +7,7 @@
 **Stop making the same mistakes. Let your agent learn from them.**
 
 [![GitHub stars](https://img.shields.io/github/stars/Ramsbaby/openclaw-self-evolving?style=social)](https://github.com/Ramsbaby/openclaw-self-evolving/stargazers)
+[![CI Lint](https://github.com/Ramsbaby/openclaw-self-evolving/actions/workflows/ci.yml/badge.svg)](https://github.com/Ramsbaby/openclaw-self-evolving/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform: macOS/Linux](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux-blue)](#)
 [![No Silent Modification](https://img.shields.io/badge/policy-proposals%20only%2C%20human%20approves-brightgreen)](#)
@@ -20,6 +21,21 @@
 </div>
 
 <p align="center"><img src="docs/assets/hero.svg" alt="openclaw-self-evolving" width="100%"></p>
+
+---
+
+## Quick Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Ramsbaby/openclaw-self-evolving/main/install.sh | bash
+```
+
+Then point it at your logs:
+
+```bash
+# edit config.yaml — set agents_md and logs_dir
+nano ~/.local/share/openclaw-self-evolving/config.yaml
+```
 
 ---
 
@@ -117,7 +133,7 @@ Agent: "I apologize, I'll use git-sync.sh going forward"
 ## Real Example Output
 
 ```
-🧬 Self-Evolving Agent Weekly Report v3.1
+🧬 Self-Evolving Agent Weekly Report v3.2
 
 Analysis period: 2026-03-17 ~ 2026-03-24
 Sessions analyzed: 23
@@ -128,7 +144,7 @@ Improvement proposals: 3
 
 ### 🔁 Proposal #1: `exec` tool consecutive retry pattern (8 sessions affected)
 
-Severity: 🔴 HIGH  |  Type: 📝 AGENTS.md addition
+Severity: 🔴 HIGH  |  Type: 📝 AGENTS.md addition  |  Score: 92
 
 > Evidence:
 > Last 7 days: `exec` called 5+ times consecutively in 8 sessions
@@ -182,7 +198,23 @@ React to approve/reject:
 - Agent logs in JSONL format (Claude Code: `~/.claude/logs/`, OpenClaw: `~/.openclaw/agents/`)
 - 5 minutes
 
-### Option A: Claude Code (most common)
+### Option A: One-line install (recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Ramsbaby/openclaw-self-evolving/main/install.sh | bash
+```
+
+Edit `~/.local/share/openclaw-self-evolving/config.yaml` to set your `agents_md` and `logs_dir`, then:
+
+```bash
+# Dry run first — see what would be detected, no changes made
+bash scripts/generate-proposal.sh --dry-run
+
+# Register weekly cron
+bash scripts/setup-wizard.sh
+```
+
+### Option B: Claude Code (git clone)
 
 ```bash
 git clone https://github.com/Ramsbaby/openclaw-self-evolving.git
@@ -204,7 +236,7 @@ bash scripts/generate-proposal.sh --dry-run
 bash scripts/setup-wizard.sh   # registers weekly cron
 ```
 
-### Option B: OpenClaw (clawhub)
+### Option C: OpenClaw (clawhub)
 
 ```bash
 clawhub install openclaw-self-evolving
@@ -214,15 +246,15 @@ bash scripts/setup-wizard.sh
 ### First Run Output
 
 ```
-[09:00:01] === Self-Evolving Agent behavior analysis v3.1 ===
+[09:00:01] === Self-Evolving Agent behavior analysis v3.2 ===
 [09:00:01] Analysis period: last 7 days / max 50 sessions
 [09:00:03] Sessions found: 23
 [09:00:04] Analysis complete: 23 sessions, 2 complaints, 1 violation, 47 retry events
-[09:00:04] === generate-proposal.sh v3.1 started ===
+[09:00:04] === generate-proposal.sh v3.2 started ===
 [09:00:04] Generating proposals...
 [09:00:05] Proposal saved: data/proposals/proposal_20260324_090005.json
 
-## 🧬 Self-Evolving Agent Weekly Report v3.1
+## 🧬 Self-Evolving Agent Weekly Report v3.2
 ...3 proposals ready for your review
 ```
 
@@ -329,6 +361,53 @@ bash scripts/generate-proposal.sh --create-issue
 
 # Specify repo explicitly
 EVOLVING_GITHUB_REPO="owner/repo" bash scripts/generate-proposal.sh --create-issue
+
+# Output a clean weekly digest (Markdown, top 3 proposals by score)
+bash scripts/generate-proposal.sh --weekly-digest
+```
+
+### `--weekly-digest`
+
+Outputs a structured Markdown report of the **top 3 proposals ranked by score** (frequency × severity × impact). Designed for use in weekly summaries, Notion pages, or piped into a Discord message.
+
+```bash
+# Preview in terminal
+bash scripts/generate-proposal.sh --weekly-digest
+
+# Save to file
+bash scripts/generate-proposal.sh --weekly-digest > weekly-report.md
+
+# Post to Discord via webhook
+bash scripts/generate-proposal.sh --weekly-digest \
+  | curl -s -X POST "$DISCORD_WEBHOOK" \
+    -H "Content-Type: application/json" \
+    -d "{\"content\": $(cat weekly-report.md | jq -Rs .)}"
+```
+
+**Example digest output:**
+
+```markdown
+# 🔄 Weekly Self-Evolution Report — 2026-03-24
+
+## Top 3 Proposals
+
+### 1. exec tool consecutive retry pattern
+**Severity:** 🔴 HIGH | **Score:** 92 | **Estimated Impact:** medium-high
+
+**Pattern detected:** exec called 5+ times consecutively in 8 sessions
+**Proposed change:** Add retry-prevention rule to AGENTS.md
+
+<details><summary>View diff</summary>
+
+\`\`\`diff
+- No rule for consecutive exec retries
++ ## exec Retry Prevention
++ Stop after 3 consecutive identical tool calls; report to user.
+\`\`\`
+
+</details>
+
+---
 ```
 
 ---
@@ -389,6 +468,9 @@ openclaw-self-evolving/
 │   ├── generate-proposal.sh     # Pipeline orchestrator
 │   ├── setup-wizard.sh          # Interactive setup + cron registration
 │   └── lib/config-loader.sh
+├── .github/
+│   └── workflows/
+│       └── ci.yml               # ShellCheck + flake8 lint on push/PR
 ├── docs/
 │   ├── assets/
 │   │   ├── hero.svg             # Hero banner
