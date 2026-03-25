@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-# generate-proposal.sh — OpenClaw Self-Evolving Agent v3.1
+# generate-proposal.sh — OpenClaw Self-Evolving Agent v3.2
 # Repo: https://github.com/Ramsbaby/openclaw-self-evolving
 #
 # Runs analyze-behavior.sh, generates AGENTS.md improvement
@@ -11,21 +11,18 @@
 #   ANALYSIS_DAYS=14 bash generate-proposal.sh
 #   bash generate-proposal.sh --create-issue          # post to GitHub Issues
 #   bash generate-proposal.sh --dry-run               # analyze only, no saves
+#   bash generate-proposal.sh --weekly-digest         # Markdown weekly digest (top 3)
 #
 # 변경 이력:
+#   v3.2 (2026-03-25) — 제안 점수 시스템 + 주간 다이제스트 출력 추가
+#     - score_proposals(): 빈도/심각도/예상 영향 기반 100점 점수 산정
+#     - --weekly-digest / -W 플래그: 상위 3개 제안을 Markdown 다이제스트로 출력
+#     - 점수는 오림스순으로 정렬되며 score 필드로 관리
 #   v3.1 (2026-03-18) — GitHub Issue 자동 생성 추가
 #     - --create-issue / -i 플래그: 주간 제안을 GitHub Issue로 자동 등록
 #     - create_github_issue(): gh CLI 래퍼, git remote 자동 감지
 #     - EVOLVING_GITHUB_REPO 환경변수 또는 git remote 사용
 #   v3.0 (2026-02-17) — 품질 비평 기반 전면 개선
-#     - 도구 연속 재시도 분석 기반 제안 추가
-#     - 반복 에러(같은 에러 N회) 기반 제안 추가
-#     - violations 오탐 제거 (exec 명령 기반으로 개선된 분석 활용)
-#     - Before를 실제 AGENTS.md에서 읽어 현재 상태 반영
-#     - 제안 구체성 강화: 즉시 AGENTS.md에 복붙 가능한 수준
-#     - UX 개선: 승인/거부 이모지 반응 안내
-#   v2.0 (2026-02-17) — config.yaml 지원
-#   v1.0 (2026-02-16) — 초기 버전
 # ============================================================
 
 # SECURITY MANIFEST:
@@ -66,21 +63,25 @@ log() {
 
 # --dry-run flag: analyze and print proposals, but do not save files or send notifications
 # --create-issue / -i flag: post weekly proposal report as a GitHub Issue
+# --weekly-digest / -W flag: output clean Markdown weekly digest (top 3 proposals)
 DRY_RUN=false
 CREATE_ISSUE=false
+WEEKLY_DIGEST=false
 for arg in "$@"; do
   case "$arg" in
     --dry-run|-n) DRY_RUN=true ;;
     --create-issue|-i) CREATE_ISSUE=true ;;
+    --weekly-digest|-W) WEEKLY_DIGEST=true ;;
   esac
 done
 [ "$DRY_RUN" = "true" ] && log "🔍 DRY RUN mode — no files will be modified, no notifications sent"
 [ "$CREATE_ISSUE" = "true" ] && log "🐙 GitHub Issue 모드 활성 — 제안이 GitHub Issue로 등록됩니다"
+[ "$WEEKLY_DIGEST" = "true" ] && log "📅 Weekly Digest 모드 활성 — 상위 3개 제안을 Markdown 다이제스트로 출력"
 
 mkdir -p "$PROPOSAL_DIR"
 mkdir -p "$SKILL_DIR/data"
 
-# ── Step 1: 행동 분석 실행 ────────────────────────────────────
+# ── Step 1: 행동 분석 실행 ────────────────────────────────────────────
 run_analysis() {
   log "행동 분석 실행 중..."
   if ! bash "$SCRIPT_DIR/analyze-behavior.sh" "$ANALYSIS_JSON" >/dev/null 2>&1; then
@@ -91,7 +92,7 @@ fallback = {
   'meta': {'analysis_date': datetime.datetime.now().strftime('%Y-%m-%d'),
             'analysis_timestamp': datetime.datetime.now().isoformat(),
             'analysis_days': int('$ANALYSIS_DAYS'),
-            'session_count': 0, 'version': '3.1.0'},
+            'session_count': 0, 'version': '3.2.0'},
   'complaints': {'session_count': 0, 'total_complaint_hits': 0, 'patterns': []},
   'errors': {'cron_errors': [], 'log_errors': []},
   'violations': {'violations': []},
@@ -108,7 +109,7 @@ with open('$ANALYSIS_JSON', 'w') as f:
   fi
 }
 
-# ── Step 2: AGENTS.md 현재 상태 읽기 ──────────────────────
+# ── Step 2: AGENTS.md 현재 상태 읽기 ──────────────────────────────────
 get_agents_md_section() {
   local section="$1"
   python3 -c "
@@ -129,7 +130,7 @@ except Exception as e:
 " 2>/dev/null || echo "(읽기 실패)"
 }
 
-# ── Step 3: 개선안 생성 ──────────────────────────────────
+# ── Step 3: 개선안 생성 ────────────────────────────────────────────
 generate_proposals() {
   log "개선안 생성 중..."
 
@@ -185,7 +186,7 @@ if total_retry_events >= 5:
     tool_fixes = {
         'exec': (
             '## ⚡ exec 연속 재시도 방지\n'
-            '같은 exec를 3회 이상 재시도하기 전에:\n'
+            '세 exec를 3회 이상 재시도하기 전에:\n'
             '1. 첫 번째 실패 시 에러 메시지를 사용자에게 보고\n'
             '2. 두 번째 시도는 방법을 변경해서 (다른 옵션/경로)\n'
             '3. 세 번째 실패 시 중단하고 수동 확인 요청\n'
@@ -214,17 +215,27 @@ if total_retry_events >= 5:
     }
     fix_text = tool_fixes.get(tool_name, f'`{tool_name}` 도구 연속 재시도 원인 파악 필요')
 
-    streak_note = f'최대 연속 호출: {worst_streak_val}회 (같은 도구 중단 없이 연속)' if worst_streak_val else ''
+    streak_note = f'연속 호입 {worst_streak_val}회' if worst_streak_val else ''
+
+    # 점수: 실행 빨도 (sessions_count * 10) + 이벤트 개수 + 심각도 가중
+    freq_score = min(sessions_count * 10, 50)
+    event_score = min(total_retry_events, 30)
+    sev_score = 20 if total_retry_events >= 20 else 10
+    score = freq_score + event_score + sev_score
+
     proposals.append({
         'id': f'retry-{tool_name}-01',
         'source': 'retry_analysis',
         'title': f'`{tool_name}` 도구 연속 재시도 패턴 개선 ({sessions_count}개 세션 영향)',
         'severity': 'high' if total_retry_events >= 20 else 'medium',
+        'frequency': total_retry_events,
+        'impact': 'high' if sessions_count >= 5 else 'medium',
+        'score': score,
         'evidence': (
-            f'최근 {analysis_days}일간 `{tool_name}` 도구를 5회 이상 연속 호출한 세션: {sessions_count}개\n'
+            f'최근 {analysis_days}일간 `{tool_name}` 도구를 5회 이상 연속 호입한 세션: {sessions_count}개\n'
             + (f'{streak_note}\n' if streak_note else '') +
-            f'쓸 재시도 이벤트: {total_retry_events}건\n'
-            f'→ 5회 이상 동일 도구 연속 호출 = 실패 후 재시도 루프 가능성\n'
+            f'올 재시도 이벤트: {total_retry_events}건\n'
+            f'→ 5회 이상 동일 도구 연속 호입 = 실패 후 재시도 루프 가능성\n'
             f'→ read/write/edit/image 등 파일 I/O는 제외하고 집계한 수치'
         ),
         'before': f'연속 `{tool_name}` 재시도 시 규칙 없음 (무한 루프 가능)',
@@ -246,11 +257,19 @@ for log_err in log_errors:
         sig = worst_repeat.get('signature', '')[:60]
         occ = worst_repeat.get('occurrences', 0)
 
+        freq_score = min(occ * 5, 50)
+        sev_score = 30  # high always
+        impact_score = 20
+        score = freq_score + sev_score + impact_score
+
         proposals.append({
             'id': f'repeat-error-{fname.replace(".", "-")}',
             'source': 'repeating_log_errors',
             'title': f'[{fname}] 같은 에러 {occ}회 반복 → 미수정 버그 의심',
             'severity': 'high',
+            'frequency': occ,
+            'impact': 'high',
+            'score': score,
             'evidence': (
                 f'`{fname}`에서 동일 에러 패턴이 {occ}회 반복:\n'
                 f'에러 유형: `{sig}`\n'
@@ -277,11 +296,21 @@ persistent_errors = [e for e in cron_errors if e.get('consecutive_errors', 0) >=
 if persistent_errors:
     names = [e.get('name', '') for e in persistent_errors]
     name_list = ', '.join(f'`{n}`' for n in names[:3])
+    total_consecutive = sum(e.get('consecutive_errors', 0) for e in persistent_errors)
+
+    freq_score = min(total_consecutive * 8, 40)
+    sev_score = 30
+    impact_score = 15
+    score = freq_score + sev_score + impact_score
+
     proposals.append({
         'id': 'cron-persistent-error-01',
         'source': 'cron_errors',
         'title': f'연속 실패 크론 즉시 점검 필요: {name_list}',
         'severity': 'high',
+        'frequency': total_consecutive,
+        'impact': 'high',
+        'score': score,
         'evidence': (
             f'consecutiveErrors >= 2인 크론: {name_list}\n'
             f'→ 이건 단발 실패가 아닌 지속적 문제\n'
@@ -314,14 +343,23 @@ for v in high_violations[:2]:
     fix = v.get('fix', '')
     examples = v.get('examples', [])
     example_text = '\n'.join(f'  - `{e}`' for e in examples[:2]) if examples else '  (예시 없음)'
+    hit_count = v.get('hit_count', 1)
+
+    freq_score = min(hit_count * 8, 40)
+    sev_score = 30 if v.get('severity') == 'high' else 15
+    impact_score = 20
+    score = freq_score + sev_score + impact_score
 
     proposals.append({
         'id': f'violation-{safe_id}',
         'source': 'agents_md_violation',
         'title': f'exec 명령에서 규칙 위반 감지: {v.get("rule", "")}',
         'severity': v.get('severity', 'medium'),
+        'frequency': hit_count,
+        'impact': 'high' if v.get('severity') == 'high' else 'medium',
+        'score': score,
         'evidence': (
-            f'최근 {analysis_days}일간 exec 명령에서 {v.get("hit_count")}회 위반:\n'
+            f'최근 {analysis_days}일간 exec 명령에서 {hit_count}회 위반:\n'
             f'{example_text}\n'
             f'→ 대화에서 "언급"이 아닌 실제 실행된 명령어 기준 (오탐 없음)'
         ),
@@ -343,15 +381,23 @@ heavy_sessions = session_health.get('heavy_sessions', 0)
 max_comp = session_health.get('max_compaction', 0)
 
 if heavy_sessions >= 3 or max_comp >= 20:
+    freq_score = min(heavy_sessions * 8, 40)
+    sev_score = 10  # low
+    impact_score = min(max_comp, 20)
+    score = freq_score + sev_score + impact_score
+
     proposals.append({
         'id': 'session-health-01',
         'source': 'session_health',
         'title': f'과도하게 긴 세션 감지 ({heavy_sessions}개 세션, 최대 콤팩션 {max_comp}회)',
         'severity': 'low',
+        'frequency': heavy_sessions,
+        'impact': 'medium' if max_comp >= 20 else 'low',
+        'score': score,
         'evidence': (
-            f'콤팩션 5회 이상 발생한 세션: {heavy_sessions}개\n'
-            f'최대 콤팩션 횟수: {max_comp}회 (1세션에서)\n'
-            f'→ 콤팩션 = 컨텍스트 손실 위험 + 토큰 낭비\n'
+            f'코팩션 5회 이상 발생한 세션: {heavy_sessions}개\n'
+            f'최대 코팩션 횟수: {max_comp}회 (1세션에서)\n'
+            f'→ 코팩션 = 컨텍스트 손실 위험 + 토큰 낙비\n'
             f'→ 복잡한 작업은 서브에이전트로 분리가 효과적'
         ),
         'before': '장시간 세션에 대한 분리 가이드 없음',
@@ -360,7 +406,7 @@ if heavy_sessions >= 3 or max_comp >= 20:
             '다음 조건 중 하나라도 해당하면 서브에이전트 사용:\n'
             '- 예상 작업 시간 > 10분\n'
             '- 도구 호출 예상 > 20회\n'
-            '- 메인 채널 컨텍스트 오염 우려\n'
+            '- 메인 체널 컨텍스트 오염 우려\n'
             '→ `subagents` 도구로 spawn, 결과는 push-based 자동 보고'
         ),
         'section': '복잡한 배경 작업',
@@ -373,11 +419,20 @@ high_priority = learnings.get('total_high_priority', 0)
 if high_priority > 0:
     top_errors = learnings.get('top_errors', [])
     summaries = [e.get('summary', '')[:50] for e in top_errors[:2] if e.get('summary')]
+
+    freq_score = min(high_priority * 10, 50)
+    sev_score = 15
+    impact_score = 10
+    score = freq_score + sev_score + impact_score
+
     proposals.append({
         'id': 'learnings-high-priority-01',
         'source': 'learnings_integration',
         'title': f'.learnings/ 고우선순위 미해결 이슈 {high_priority}건',
         'severity': 'medium',
+        'frequency': high_priority,
+        'impact': 'medium',
+        'score': score,
         'evidence': (
             f'self-improving-agent 기록 중 미해결 high/critical 이슈 {high_priority}건\n'
             f'예시: {"; ".join(summaries) if summaries else "자세한 내용은 .learnings/ 참조"}'
@@ -404,11 +459,20 @@ if total_hits >= 3:
     for p in patterns[:3]:
         for ex in p.get('examples', [])[:1]:
             examples.append(f'"{ex[:40]}"')
+
+    freq_score = min(total_hits * 8, 50)
+    sev_score = 20 if total_hits >= 5 else 10
+    impact_score = 20
+    score = freq_score + sev_score + impact_score
+
     proposals.append({
         'id': 'real-complaint-01',
         'source': 'complaint_patterns',
         'title': f'실제 사용자 불만 표현 {total_hits}건 감지',
         'severity': 'high' if total_hits >= 5 else 'medium',
+        'frequency': total_hits,
+        'impact': 'high' if total_hits >= 5 else 'medium',
+        'score': score,
         'evidence': (
             f'최근 {analysis_days}일간 명확한 불만 표현 {total_hits}건\n'
             f'예시:\n' + '\n'.join(f'  - {e}' for e in examples[:3]) +
@@ -439,9 +503,10 @@ if isinstance(previously_rejected, list):
 
 proposals = [p for p in proposals if p.get('id') not in rejected_ids]
 
-# 심각도 기준 정렬 (high → medium → low)
-severity_order = {'high': 0, 'medium': 1, 'low': 2}
-proposals.sort(key=lambda p: severity_order.get(p.get('severity', 'low'), 3))
+# ── 점수 기준 정렬 (내림소순) ──
+# 점수 = 빈도(frequency) + 심각도(severity) + 예상 영향(impact) 기반 100점 체계
+# 이미 각 소스에서 score가 산정되었으므로 내림소순 정렬
+proposals.sort(key=lambda p: p.get('score', 0), reverse=True)
 
 if not proposals:
     proposals.append({
@@ -449,6 +514,9 @@ if not proposals:
         'source': 'system',
         'title': '이번 주 발견된 개선 필요 사항 없음',
         'severity': 'info',
+        'frequency': 0,
+        'impact': 'none',
+        'score': 0,
         'evidence': f'최근 {analysis_days}일 분석 결과 주요 패턴 없음',
         'before': 'N/A',
         'after': 'N/A',
@@ -467,7 +535,7 @@ GEN_PY_EOF
   echo "$result"
 }
 
-# ── Step 4: 날짜 계산 ─────────────────────────────────
+# ── Step 4: 날짜 계산 ────────────────────────────────────
 get_date_range() {
   python3 -c "
 from datetime import datetime, timedelta
@@ -478,7 +546,7 @@ print(from_date.strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d'))
 " 2>/dev/null || echo "N/A $(date '+%Y-%m-%d')"
 }
 
-# ── Step 5: 리포트 생성 ───────────────────────────────
+# ── Step 5: 리포트 생성 ──────────────────────────────────
 build_report() {
   local proposals_json="$1"
 
@@ -550,8 +618,10 @@ diff_type_label = {
     'none': ''
 }
 
+impact_label = {'high': '**HIGH**', 'medium': 'MEDIUM', 'low': 'low', 'none': '-'}
+
 lines = []
-lines.append("## 🧬 Self-Evolving Agent 주간 분석 리포트 v3.1")
+lines.append("## 🧠 Self-Evolving Agent 주간 분석 리포트 v3.2")
 lines.append("")
 lines.append(f"**분석 기간:** {date_from} ~ {date_to}")
 lines.append(f"**분석된 세션:** {session_count}개")
@@ -561,7 +631,7 @@ if retry_events > 0:
 if total_hits > 0:
     lines.append(f"**실제 불만 표현:** {total_hits}건 (일반 요청 표현 제외)")
 if heavy_sessions > 0:
-    lines.append(f"**과도한 세션:** {heavy_sessions}개 (콤팩션 5회 이상)")
+    lines.append(f"**과도한 세션:** {heavy_sessions}개 (코팩션 5회 이상)")
 
 lines.append(f"**개선 제안:** {proposal_count}개")
 lines.append("")
@@ -572,15 +642,30 @@ if proposal_count == 0:
 else:
     lines.append("---")
     lines.append("")
+    lines.append("### 📊 제안 점수 요약 (\ub0b4림소순)")
+    lines.append("")
+    lines.append("| # | 제안 | 점수 | 빈도 | 심각도 | 예상 영향 |")
+    lines.append("|---|------|------|------|--------|---------|")
+    for i, p in enumerate(real_proposals, 1):
+        sev = p.get('severity', 'low').upper()
+        freq = p.get('frequency', 0)
+        imp = p.get('impact', 'low').upper()
+        score = p.get('score', 0)
+        title_short = p.get('title', '')[:40]
+        lines.append(f"| {i} | {title_short} | **{score}** | {freq} | {sev} | {imp} |")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
 
     for i, p in enumerate(real_proposals, 1):
         sev_emoji = {'high': '🔴', 'medium': '🟡', 'low': '🟢'}.get(p.get('severity', 'low'), '🟢')
         src_emoji = source_emoji.get(p.get('source', ''), '📌')
         diff_label = diff_type_label.get(p.get('diff_type', ''), '')
+        score = p.get('score', 0)
 
         lines.append(f"### {src_emoji} 제안 #{i}: {p.get('title', '')}")
         lines.append("")
-        lines.append(f"**심각도:** {sev_emoji} {p.get('severity', '').upper()}  |  **유형:** {diff_label}")
+        lines.append(f"**심각도:** {sev_emoji} {p.get('severity', '').upper()}  |  **유형:** {diff_label}  |  **점수:** {score}/100")
         lines.append("")
         evidence = p.get('evidence', '')
         lines.append("> **근거:**")
@@ -623,7 +708,110 @@ REPORT_PY_EOF
   rm -f "$tmp_proposals" "$tmp_meta" "$tmp_rpt"
 }
 
-# ── Step 6: 제안 파일 저장 ────────────────────────────
+# ── Step 5b: Weekly Digest 생성 (--weekly-digest 플래그) ───────────────────
+build_weekly_digest() {
+  local proposals_json="$1"
+
+  local date_info date_from date_to
+  date_info="$(get_date_range)"
+  date_from="${date_info%% *}"
+  date_to="${date_info##* }"
+  local today_str
+  today_str="$(date '+%Y-%m-%d')"
+
+  local tmp_proposals="/tmp/sea-wd-proposals-$$.json"
+  echo "$proposals_json" > "$tmp_proposals"
+
+  python3 - "$tmp_proposals" "$today_str" "$date_from" "$date_to" << 'DIGEST_PY_EOF'
+import json, sys
+from datetime import datetime
+
+proposals_path = sys.argv[1]
+today_str = sys.argv[2]
+date_from = sys.argv[3]
+date_to = sys.argv[4]
+
+with open(proposals_path, encoding='utf-8') as f:
+    proposals = json.load(f)
+
+real_proposals = [p for p in proposals if p.get('id') != 'no-issues-found']
+# Top 3 by score (already sorted)
+top3 = real_proposals[:3]
+
+sev_label = {
+    'high': '[HIGH]',
+    'medium': '[MEDIUM]',
+    'low': '[LOW]',
+    'info': '[INFO]'
+}
+impact_estimate = {
+    'high': 'High impact — directly reduces token waste or prevents crashes',
+    'medium': 'Medium impact — reduces recurring friction or errors',
+    'low': 'Low impact — minor improvement to agent efficiency',
+    'none': 'Informational'
+}
+
+lines = []
+lines.append(f"# 🔄 Weekly Self-Evolution Report \u2014 {today_str}")
+lines.append("")
+lines.append(f"**Period:** {date_from} \u2192 {date_to}")
+lines.append("")
+
+if not top3:
+    lines.append("> No improvement proposals this week. Agent behavior is within expected patterns.")
+else:
+    lines.append(f"## Top {len(top3)} Proposals")
+    lines.append("")
+
+    for i, p in enumerate(top3, 1):
+        sev = sev_label.get(p.get('severity', 'low'), '[?]')
+        title = p.get('title', '').replace('`', '')
+        score = p.get('score', 0)
+        freq = p.get('frequency', 0)
+        impact = p.get('impact', 'low')
+        impact_desc = impact_estimate.get(impact, '')
+
+        # Build a short evidence summary (first non-empty line)
+        evidence_lines = [l for l in p.get('evidence', '').split('\n') if l.strip()]
+        pattern_line = evidence_lines[0] if evidence_lines else ''
+        proposed_change = p.get('after', '').split('\n')[0].lstrip('# ').strip()
+        before_short = p.get('before', '')[:80]
+
+        lines.append(f"### {i}. {sev} {title}")
+        lines.append(f"**Pattern detected**: {pattern_line}")
+        lines.append(f"**Proposed change**: {proposed_change}")
+        lines.append(f"**Estimated impact**: {impact_desc}")
+        lines.append(f"**Score**: {score}/100  |  **Frequency**: {freq} occurrences")
+        lines.append("")
+        if before_short:
+            lines.append("<details>")
+            lines.append("<summary>Before / After diff</summary>")
+            lines.append("")
+            lines.append("```diff")
+            lines.append(f"- {before_short}")
+            for after_line in p.get('after', '').split('\n')[:3]:
+                if after_line.strip():
+                    lines.append(f"+ {after_line.lstrip('# ').strip()}")
+            lines.append("```")
+            lines.append("")
+            lines.append("</details>")
+            lines.append("")
+        if i < len(top3):
+            lines.append("---")
+            lines.append("")
+
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+    lines.append("> React \u2705 to apply all, or 1\ufe0f\u20e3\u20132\ufe0f\u20e3\u20133\ufe0f\u20e3 for individual proposals. \u274c to reject.")
+
+print('\n'.join(lines))
+DIGEST_PY_EOF
+
+  rm -f "$tmp_proposals"
+}
+
+# ── Step 6: 제안 파일 저장 ──────────────────────────────────
 save_proposal() {
   local proposals_json="$1"
   local ts
@@ -664,7 +852,7 @@ print('$proposal_file')
   rm -f "$tmp_file"
 }
 
-# ── Step 7: 만료 제안 아카이브 ───────────────────────
+# ── Step 7: 만료 제안 아카이브 ────────────────────────────────
 archive_expired_proposals() {
   local archive_dir="$PROPOSAL_DIR/archive"
   mkdir -p "$archive_dir"
@@ -690,7 +878,7 @@ if moved > 0: print(f'{moved}개 만료 제안 아카이브 완료')
 " 2>/dev/null || true
 }
 
-# ── Step 8: GitHub Issue 생성 (--create-issue 플래그) ────────────
+# ── Step 8: GitHub Issue 생성 (--create-issue 플래그) ────────────────────
 create_github_issue() {
   local report="$1"
 
@@ -722,7 +910,7 @@ create_github_issue() {
 
   local ts
   ts=$(date '+%Y-%m-%d')
-  local title="🧬 Self-Evolving Weekly Proposal — ${ts}"
+  local title="🧠 Self-Evolving Weekly Proposal — ${ts}"
 
   log "GitHub Issue 생성 중 (${github_repo})..."
 
@@ -747,9 +935,9 @@ create_github_issue() {
   fi
 }
 
-# ── 메인 ──────────────────────────────────────────────────────
+# ── 메인 ──────────────────────────────────────────────────────────────
 main() {
-  log "=== generate-proposal.sh v3.1 시작 ==="
+  log "=== generate-proposal.sh v3.2 시작 ==="
 
   run_analysis
 
@@ -757,7 +945,14 @@ main() {
   proposals_json="$(generate_proposals 2>/dev/null || echo '[]')"
 
   if [ -z "$proposals_json" ] || [ "$proposals_json" = "[]" ] || [ "$proposals_json" = "null" ]; then
-    proposals_json='[{"id":"no-issues-found","source":"system","title":"이번 주 발견된 개선 필요 사항 없음","severity":"info","evidence":"분석 결과 주요 패턴 없음","before":"N/A","after":"N/A","section":"N/A","diff_type":"none"}]'
+    proposals_json='[{"id":"no-issues-found","source":"system","title":"이번 주 발견된 개선 필요 사항 없음","severity":"info","frequency":0,"impact":"none","score":0,"evidence":"분석 결과 주요 패턴 없음","before":"N/A","after":"N/A","section":"N/A","diff_type":"none"}]'
+  fi
+
+  # --weekly-digest: 상위 3개 제안을 클린 Markdown 다이제스트로 출력
+  if [ "$WEEKLY_DIGEST" = "true" ]; then
+    build_weekly_digest "$proposals_json"
+    log "=== generate-proposal.sh v3.2 완료 (weekly-digest) ==="
+    return 0
   fi
 
   if [ "$DRY_RUN" = "true" ]; then
@@ -766,11 +961,13 @@ main() {
 import sys, json
 proposals = json.load(sys.stdin)
 for i, p in enumerate(proposals, 1):
-    print(f'  [{i}] [{p.get(\"severity\",\"?\").upper()}] {p.get(\"title\",\"\")}')
+    score = p.get('score', 0)
+    sev = p.get('severity', '?').upper()
+    print(f'  [{i}] [{sev}] (score={score}) {p.get(\"title\",\"\")}')
     print(f'       Evidence: {p.get(\"evidence\",\"\")[:120]}')
     print()
 " 2>/dev/null || echo "$proposals_json"
-    log "=== generate-proposal.sh v3.1 완료 (dry run) ==="
+    log "=== generate-proposal.sh v3.2 완료 (dry run) ==="
     return 0
   fi
 
@@ -789,7 +986,7 @@ for i, p in enumerate(proposals, 1):
     create_github_issue "$report"
   fi
 
-  log "=== generate-proposal.sh v3.1 완료 ==="
+  log "=== generate-proposal.sh v3.2 완료 ==="
 }
 
 main "$@"
