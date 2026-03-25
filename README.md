@@ -19,6 +19,8 @@
 
 </div>
 
+<p align="center"><img src="docs/assets/hero.svg" alt="openclaw-self-evolving" width="100%"></p>
+
 ---
 
 ## What Is This?
@@ -76,6 +78,8 @@ AGENTS.md / CLAUDE.md ──────────►    • Zero API calls �
 ```
 
 **One pipeline, three scripts, zero ongoing cost.**
+
+<p align="center"><img src="docs/assets/loop.svg" alt="Self-improvement loop" width="100%"></p>
 
 ---
 
@@ -386,6 +390,9 @@ openclaw-self-evolving/
 │   ├── setup-wizard.sh          # Interactive setup + cron registration
 │   └── lib/config-loader.sh
 ├── docs/
+│   ├── assets/
+│   │   ├── hero.svg             # Hero banner
+│   │   └── loop.svg             # Self-improvement loop diagram
 │   ├── DETECTION-PATTERNS.md
 │   └── QUICKSTART.md
 ├── test/fixtures/               # Sample JSONL for contributor testing
