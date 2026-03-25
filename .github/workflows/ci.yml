@@ -1,0 +1,52 @@
+name: CI Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  shellcheck:
+    name: ShellCheck (.sh)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Lint shell scripts
+        run: |
+          find . -name '*.sh' \
+            -not -path './.git/*' \
+            -not -path './test/fixtures/*' \
+            -print0 \
+          | xargs -0 shellcheck -S warning
+
+  pylint:
+    name: Python lint (.py)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install flake8
+        run: pip install flake8
+
+      - name: Lint Python files
+        run: |
+          py_files=$(find . -name '*.py' \
+            -not -path './.git/*' \
+            -not -path './test/fixtures/*')
+          if [ -n "$py_files" ]; then
+            echo "$py_files" | xargs flake8 \
+              --max-line-length=120 \
+              --extend-ignore=E501
+          else
+            echo "No .py files found — skipping."
+          fi
