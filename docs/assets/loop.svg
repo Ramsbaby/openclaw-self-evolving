@@ -79,7 +79,7 @@
 
   <!-- Safety badge -->
   <rect x="30" y="86" width="200" height="44" rx="8" fill="#21262d" stroke="#f85149" stroke-width="1" opacity="0.8"/>
-  <text x="130" y="106" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="11" font-weight="700" fill="#f85149">🔒 Safety Contract</text>
+  <text x="130" y="106" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="11" font-weight="700" fill="#f85149">Safety Contract</text>
   <text x="130" y="122" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="10" fill="#7d8590">Proposals only — no silent mutations</text>
 
   <!-- Stats -->
