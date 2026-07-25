@@ -53,9 +53,14 @@ fi
 # 5. Optional cron setup
 echo ""
 read -rp "Set up weekly cron job (Sunday 09:00)? [y/N] " yn
-if [[ "${yn,,}" == "y" ]]; then
+# ${yn,,} is bash 4+; macOS ships bash 3.2, where it aborts with "bad substitution".
+yn_lower="$(printf '%s' "$yn" | tr '[:upper:]' '[:lower:]')"
+if [[ "$yn_lower" == "y" ]]; then
   CRON_CMD="0 9 * * 0 bash $SCRIPT_DIR/generate-proposal.sh >> ~/.openclaw/logs/self-evolving-cron.log 2>&1"
-  (crontab -l 2>/dev/null | grep -v "generate-proposal.sh"; echo "$CRON_CMD") | crontab -
+  mkdir -p "$HOME/.openclaw/logs"
+  # On an empty crontab, grep exits 1 and `set -o pipefail` kills the subshell before
+  # echo runs — first-time users ended up with no cron entry at all.
+  { crontab -l 2>/dev/null | grep -v "generate-proposal.sh" || true; echo "$CRON_CMD"; } | crontab -
   echo "  ✓ Cron job added"
 fi
 
